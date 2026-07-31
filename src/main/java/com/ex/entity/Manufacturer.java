@@ -27,4 +27,12 @@ public class Manufacturer {
 		this.contactPerson = contactPerson;
 		this.phone = phone;
 	}
+
+	public Long getId() {
+		return manufacturerId;
+	}
+
+	public String getName() {
+		return companyName;
+	}
 }

@@ -44,6 +44,18 @@ public class ProductLot {
 		this.lotQuantity = lotQuantity;
 	}
 
+	public Long getId() {
+		return lotId;
+	}
+
+	public String getLotNumber() {
+		return lotNo;
+	}
+
+	public int getQuantity() {
+		return lotQuantity;
+	}
+
 	public void changeQuantity(int quantity) {
 		int changed = lotQuantity + quantity;
 		if (changed < 0) {
@@ -68,5 +80,35 @@ public class ProductLot {
 			throw new IllegalArgumentException("창고 위치는 50자 이내로 입력해 주세요.");
 		}
 		this.warehouseLocation = normalized;
+	}
+
+	public void decrease(int amount) {
+		if (amount <= 0 || lotQuantity < amount) {
+			throw new IllegalArgumentException("LOT 재고가 부족합니다.");
+		}
+		changeQuantity(-amount);
+	}
+
+	public void increase(int amount) {
+		if (amount <= 0) {
+			throw new IllegalArgumentException(
+					"복원 수량은 1개 이상이어야 합니다.");
+		}
+		changeQuantity(amount);
+	}
+
+	public void updateDetails(
+			String lotNo,
+			LocalDate manufacturedDate,
+			LocalDate expirationDate,
+			int quantity) {
+		if (quantity < 0) {
+			throw new IllegalArgumentException(
+					"LOT 재고는 0보다 작을 수 없습니다.");
+		}
+		changeLotNo(lotNo);
+		this.manufacturedDate = manufacturedDate;
+		this.expirationDate = expirationDate;
+		this.lotQuantity = quantity;
 	}
 }

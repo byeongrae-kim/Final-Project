@@ -23,4 +23,24 @@ public interface ProductRepository
     // 상품 상세 화면용: 제조사까지 함께 조회
     @EntityGraph(attributePaths = "manufacturer")
     Optional<Product> findDetailByProductId(Long productId);
+
+    @EntityGraph(attributePaths = {
+        "manufacturer",
+        "lots"
+    })
+    List<Product> findAllByActiveTrueOrderByProductIdAsc();
+
+    default List<Product> findAllByActiveTrueOrderByIdAsc() {
+        return findAllByActiveTrueOrderByProductIdAsc();
+    }
+
+    @EntityGraph(attributePaths = {
+        "manufacturer",
+        "lots"
+    })
+    Optional<Product> findByProductIdAndActiveTrue(Long productId);
+
+    default Optional<Product> findByIdAndActiveTrue(Long productId) {
+        return findByProductIdAndActiveTrue(productId);
+    }
 }
