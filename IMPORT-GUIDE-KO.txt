@@ -1,0 +1,59 @@
+FEED FLOW 최종 수정본 Import 안내
+=================================
+
+[반영된 수정]
+1. 로그인/비밀번호 찾기 버튼 동작 복구
+2. 비밀번호 재설정 시 회원가입과 동일한 유효성 검사
+   - 8~64자
+   - 영문, 숫자, 특수문자 포함
+   - 비밀번호 확인 일치 검사
+3. 휴대전화 010-1234-5678 자동 표시
+4. DB에 하이픈이 있거나 없어도 같은 전화번호로 확인
+5. 메인·로그인 창·마이페이지·푸터·관리자 화면의 모든 로고를
+   오른쪽 FARM ACCOUNT 카드처럼 심볼과 FEED FLOW 글자가 모두 보이도록 통일
+6. Kakao 우편번호 주소 검색
+   - 회원가입 자택 주소와 농장 주소
+   - 주문·결제 배송지 주소
+7. 결제 API 연동 구조
+   - PortOne V1 통합 결제(impXXXXXXXX 고객사 식별코드 방식)
+   - 신용카드: PortOne 카드 PG 채널
+   - 카카오페이: PortOne 카카오페이 채널
+   - 무통장입금: PortOne 가상계좌 PG 채널
+   - 서버 결제 조회 검증 및 V1 웹훅 처리
+   - 상세 키 설정은 PAYMENT-API-GUIDE-KO.txt 참고
+8. 기존 H2 결제 컬럼 자동 마이그레이션
+   - KAKAO/TOSS만 허용하던 기존 payment_provider 컬럼을 PORTONE 호환 형식으로 자동 변경
+   - 기존 회원·상품·주문 데이터는 삭제하지 않음
+9. 마이페이지 결제 상태
+   - 가상계좌: 입금 대기 / 입금 확인 / 입금 완료
+   - 미입금 가상계좌: 입금 전 주문취소
+   - 휴대폰 결제 완료 후 DB 저장에 실패한 주문: 결제상태 확인으로 복구
+
+[STS Import]
+1. ZIP 파일을 원하는 새 폴더에 압축 해제합니다.
+2. STS에서 File > Import를 선택합니다.
+3. Gradle > Existing Gradle Project를 선택합니다.
+4. Project root directory에서 압축을 푼 finalProject 폴더를 선택합니다.
+   build.gradle 파일이 바로 보이는 finalProject 폴더여야 합니다.
+5. Finish를 누르고 Gradle 동기화가 끝날 때까지 기다립니다.
+6. Test3Application.java > Run As > Spring Boot App으로 실행합니다.
+7. 브라우저에서 http://localhost:8080/ 으로 접속합니다.
+
+[기존 H2 회원 데이터 유지]
+기존 프로젝트의 data 폴더는 이 ZIP에 포함하지 않았습니다.
+기존 회원·상품·주문·결제 데이터를 유지하려면 서버를 완전히 종료한 뒤 기존 data 폴더를
+새 finalProject 폴더 바로 아래로 복사하세요.
+
+현재 휴대폰에서 완료된 결제를 복구하려면 기존 data 폴더가 반드시 필요합니다.
+새 프로젝트 실행 후 로그인 > 마이페이지 > 해당 주문의 '결제상태 확인'을 누르세요.
+같은 주문을 다시 결제하지 마세요.
+
+[관리자 환경변수]
+관리자 로그인이 필요한 경우 STS Run Configurations > Environment에 다음 값을 등록합니다.
+FEEDFLOW_ADMIN_USERNAME=admin
+FEEDFLOW_ADMIN_PASSWORD=Admin!1234
+
+[검증 결과]
+- JavaScript 문법 검사 통과
+- H2 마이그레이션·PortOne 결제 검증·가상계좌 발급취소 자동화 테스트 포함
+- 실제 결제 키는 ZIP에 포함하지 않음

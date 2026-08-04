@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${siteName}">FEED FLOW 판매자센터</title>
+    <link rel="icon" type="image/png" th:href="@{/images/feedflow-logo.png}" href="/images/feedflow-logo.png">
+    <link rel="stylesheet" th:href="@{/css/feedflow.css}" href="/css/feedflow.css">
+</head>
+<body class="admin-body">
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<main class="admin-page">
+    <aside class="admin-sidebar">
+        <a class="admin-brand" href="/admin"><span class="admin-logo"><img th:src="@{/images/feedflow-logo.png}" src="/images/feedflow-logo.png" alt="FEED FLOW"></span><strong>판매자센터</strong></a>
+        <nav>
+            <a class="active" href="#dashboard">대시보드</a>
+            <a href="#catalog">상품 관리</a>
+            <a href="#catalog">주문 관리</a>
+            <a href="#inventory">재고·LOT 현황</a>
+            <a href="/">구매 사이트</a>
+        </nav>
+        <p>상품·LOT 재고는 H2 DB에 저장되며 구매 화면에 즉시 반영됩니다.</p>
+    </aside>
+
+    <div class="admin-content">
+    <header class="admin-hero">
+        <div><p>FEED FLOW · SELLER CENTER</p><h1>상품 운영 대시보드</h1><span>등록, 수정, 판매 중지와 LOT 재고를 한 화면에서 관리합니다.</span></div>
+        <a href="/">구매 사이트로 돌아가기 →</a>
+    </header>
+
+    <section class="admin-auth" aria-label="관리자 API 인증">
+        <label>관리자 아이디<input id="admin-username" autocomplete="username"></label>
+        <label>관리자 비밀번호<input id="admin-password" type="password" autocomplete="current-password"></label>
+        <p id="admin-message">Spring Boot 실행 환경변수와 같은 관리자 계정을 입력하세요.</p>
+    </section>
+
+    <section id="dashboard" class="admin-dashboard">
+        <article><span>전체 판매 상품</span><strong id="metric-total">0</strong><small>개</small></article>
+        <article><span>품절 상품</span><strong id="metric-soldout">0</strong><small>개</small></article>
+        <article><span>유통기한 30일 이내</span><strong id="metric-expiry">0</strong><small>LOT</small></article>
+        <article><span>재고 10포 이하</span><strong id="metric-low">0</strong><small>개</small></article>
+        <article><span>오늘 주문</span><strong>실시간</strong><small>주문 API</small></article>
+    </section>
+
+    <section id="inventory" class="admin-editor">
+        <div class="admin-title">
+            <div><small id="editor-eyebrow">NEW PRODUCT</small><h2 id="editor-title">새 상품 등록</h2></div>
+            <button id="cancel-edit" type="button" hidden>수정 취소</button>
+        </div>
+        <form id="admin-product-form">
+            <div class="admin-form-grid">
+                <label>유통업체<input id="manufacturerName" required value="피드플로우 협력사"></label>
+                <label>제품명<input id="productName" required></label>
+                <label>축종
+                    <select id="animalType" required>
+                        <option value="CATTLE">소 · 한우</option><option value="DAIRY_CATTLE">소 · 젖소</option>
+                        <option value="PIG">돼지</option><option value="CHICKEN">닭·오리 · 닭</option>
+                        <option value="DUCK">닭·오리 · 오리</option>
+                        <option value="SUPPLEMENT">영양제</option>
+                    </select>
+                </label>
+                <label>급여 단계<input id="feedStage" required placeholder="비육 후기"></label>
+                <label class="span-two">제품 상세설명<textarea id="description" required></textarea></label>
+                <label>무게(kg)<input id="weightKg" type="number" min="1" step="0.1" required value="25"></label>
+                <label>판매가(원)<input id="price" type="number" min="1" required></label>
+                <label>정상가(선택)<input id="originalPrice" type="number" min="0"></label>
+                <label>이벤트 배지<input id="badge" placeholder="특가"></label>
+                <label>조단백(%)<input id="proteinPercent" type="number" min="0" step="0.1" required value="15"></label>
+                <label>조지방(%)<input id="fatPercent" type="number" min="0" step="0.1" required value="3"></label>
+                <label>조섬유(%)<input id="fiberPercent" type="number" min="0" step="0.1" required value="8"></label>
+                <label>칼슘(%)<input id="calciumPercent" type="number" min="0" step="0.1" required value="1"></label>
+                <label class="span-two">이미지 URL(선택)<input id="imageUrl" type="url" placeholder="https://..."></label>
+                <label>화면 색상 코드<input id="displayTone" required value="amber"></label>
+                <label>사료 모양 코드<input id="displayShape" required value="pellet"></label>
+            </div>
+            <div class="lot-editor">
+                <h3>LOT 재고 정보</h3>
+                <div class="admin-form-grid four-columns">
+                    <label>LOT 번호<input id="lotNumber" required></label>
+                    <label>제조일<input id="manufacturedDate" type="date" required></label>
+                    <label>유통기한<input id="expirationDate" type="date" required></label>
+                    <label>잔여수량<input id="lotQuantity" type="number" min="0" required value="0"></label>
+                </div>
+            </div>
+            <div class="admin-image-preview">
+                <img id="admin-preview-image" th:src="@{/images/feed-bag-warehouse.png}" src="/images/feed-bag-warehouse.png" alt="상품 이미지 미리보기">
+                <div><strong>상품 이미지 미리보기</strong><p>이미지 URL을 입력하지 않으면 기본 사료 사진이 사용됩니다.</p></div>
+            </div>
+            <button id="save-product" class="admin-save" type="submit">새 상품 등록</button>
+        </form>
+    </section>
+
+    <section id="catalog" class="admin-products">
+        <div class="admin-title"><div><small>CATALOG</small><h2>상품 관리 <span id="admin-product-count">0</span>개</h2></div></div>
+        <div class="admin-tools">
+            <label>검색<input id="admin-search" type="search" placeholder="상품명, 상품 코드, LOT 번호"></label>
+            <label>축종<select id="admin-animal-filter"><option value="ALL">전체 축종</option><option value="CATTLE_GROUP">소</option><option value="PIG">돼지</option><option value="POULTRY_GROUP">닭·오리</option><option value="SUPPLEMENT">영양제</option></select></label>
+            <label>재고<select id="admin-stock-filter"><option value="ALL">전체 재고</option><option value="AVAILABLE">구매 가능</option><option value="LOW">10포 이하</option><option value="SOLDOUT">품절</option></select></label>
+            <label>이벤트<select id="admin-event-filter"><option value="ALL">전체</option><option value="EVENT">이벤트 상품</option><option value="NORMAL">일반 상품</option></select></label>
+            <button id="admin-filter-reset" type="button">초기화</button>
+        </div>
+        <div class="admin-table-wrap">
+            <table>
+                <thead><tr><th>상품 코드 / 제품</th><th>축종</th><th>포장 / 가격</th><th>최근 LOT / 유통기한</th><th>재고 상태</th><th>이벤트</th><th>관리</th></tr></thead>
+                <tbody id="admin-product-table"></tbody>
+            </table>
+        </div>
+    </section>
+    </div>
+</main>
+<script th:src="@{/js/admin.js}" src="/js/admin.js" defer></script>
+</body>
+</html>
