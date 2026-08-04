@@ -1,0 +1,54 @@
+Enum	사용 테이블.컬럼	상수	DB 저장값	화면 표기	비고
+Role	users.role	USER	USER	고객	B2C 전용 / 관리자 접근 불가
+Role	users.role	STAFF	STAFF	사원	/admin/** 접근 가능
+Role	users.role	ADMIN	ADMIN	책임자	매출 통계 / 사원 관리 / 재고 보정 권한
+AnimalType	products.animalType	CATTLE	CATTLE	소	한우 · 육우 · 번식우
+AnimalType	products.animalType	PIG	PIG	돼지	자돈 · 육성돈 · 임신돈
+AnimalType	products.animalType	POULTRY	POULTRY	조류	닭 · 오리 통합
+ProductType	products.productType	FEED	FEED	사료	배합사료
+ProductType	products.productType	SUPPLEMENT	SUPPLEMENT	영양제	포장 단위 작고 유통기한 길다
+BinPurpose	warehouseBins.binPurpose	STORAGE	STORAGE	보관	적재율 통계에 포함
+BinPurpose	warehouseBins.binPurpose	RECEIVING	RECEIVING	입고 대기	도면에는 그리되 적재율 통계 제외
+BinPurpose	warehouseBins.binPurpose	SHIPPING	SHIPPING	출고 대기	도면에는 그리되 적재율 통계 제외
+BinPurpose	warehouseBins.binPurpose	INSPECTION	INSPECTION	검수	도면에는 그리되 적재율 통계 제외
+OrderStatus	orders.status	PAID	PAID	결제완료	출고 대상
+OrderStatus	orders.status	READY	READY	출고대기	출고 대상
+OrderStatus	orders.status	SHIPPED	SHIPPED	출고완료	FEFO 출고 처리 후
+OrderStatus	orders.status	DELIVERED	DELIVERED	배송완료	
+OrderStatus	orders.status	CANCELED	CANCELED	취소	매출 집계에서 제외
+MovementType	stockMovements.movementType	INBOUND	INBOUND	입고	재고 증가 (+)
+MovementType	stockMovements.movementType	OUTBOUND	OUTBOUND	출고	재고 감소 (-)
+MovementType	stockMovements.movementType	DISPOSAL	DISPOSAL	폐기	재고 감소 (-)
+MovementType	stockMovements.movementType	MOVE	MOVE	구역이동	총량 변화 없음
+MovementType	stockMovements.movementType	ADJUST	ADJUST	재고조정	실사 보정
+DisposalReason	stockMovements.reason	EXPIRED	EXPIRED	유통기한 경과	
+DisposalReason	stockMovements.reason	DAMAGED	DAMAGED	포장 파손	
+DisposalReason	stockMovements.reason	CONTAMINATED	CONTAMINATED	오염/변질	
+DisposalReason	stockMovements.reason	WET	WET	습기/침수	
+DisposalReason	stockMovements.reason	SAMPLE	SAMPLE	샘플 사용	
+DisposalReason	stockMovements.reason	LOSS	LOSS	분실	
+DisposalReason	stockMovements.reason	OTHER	OTHER	기타	
+AnimalType	farmCustomers.animalType	CATTLE	CATTLE	소	농장 사육 축종 / products.animalType 과 같은 enum 을 공유해 센터 취급 축종과 비교 가능
+AnimalType	farmCustomers.animalType	PIG	PIG	돼지	
+AnimalType	farmCustomers.animalType	POULTRY	POULTRY	조류	팀원 원본의 자유 문자열 '조류(닭/오리)' 를 이 상수로 변환했다
+CustomerStatus	farmCustomers.status	ACTIVE	ACTIVE	거래 중	월 예상 사료량 합산 대상 / 뱃지 bg-primary
+CustomerStatus	farmCustomers.status	PAUSED	PAUSED	거래 보류	합산에서 제외하되 담당 농장 수에는 포함 / 뱃지 bg-secondary / '해지' 를 두지 않은 이유는 과거 이력의 상대로 남아야 하고 재개가 흔하기 때문
+
+DefectType	defectRecords.defectType	DAMAGE	DAMAGE	파손 / 포장 손상	DisposalReason.DAMAGED 로 매핑 / 공급업체 반품 검토 대상
+DefectType	defectRecords.defectType	CONTAMINATION	CONTAMINATION	변질 / 오염	DisposalReason.CONTAMINATED 로 매핑
+DefectType	defectRecords.defectType	WET	WET	침수 / 습기	DisposalReason.WET 로 매핑
+DefectType	defectRecords.defectType	SPECIFICATION	SPECIFICATION	규격 미달	공급업체 반품 검토 대상 / 성적서 불일치 등
+DefectType	defectRecords.defectType	FOREIGN_MATTER	FOREIGN_MATTER	이물 혼입	공급업체 반품 검토 대상
+DefectType	defectRecords.defectType	EXPIRED	EXPIRED	유통기한 경과	DisposalReason.EXPIRED 로 매핑
+DefectType	defectRecords.defectType	OTHER	OTHER	기타	
+DefectStage	defectRecords.stage	RECEIVING	RECEIVING	입고 검사	BinPurpose.RECEIVING · INSPECTION 에 대응 / 이 단계 비중이 높아야 좋다
+DefectStage	defectRecords.stage	STORAGE	STORAGE	보관 중	BinPurpose.STORAGE 에 대응
+DefectStage	defectRecords.stage	SHIPPING	SHIPPING	출고 검사	BinPurpose.SHIPPING 에 대응 / 가장 늦게 잡힌 경우
+DefectStage	defectRecords.stage	TRANSFER	TRANSFER	센터 간 이관 중	BinPurpose.IN_TRANSIT 에 대응 / 구역을 특정할 수 없다
+DefectStatus	defectRecords.status	QUARANTINED	QUARANTINED	격리	기본값 / 출고 차단은 이 상태가 아니라 구역 용도가 한다
+DefectStatus	defectRecords.status	INSPECTING	INSPECTING	검사 중	담당자가 들여다보고 있는 상태
+DefectStatus	defectRecords.status	RESOLVED	RESOLVED	처리 완료	되돌릴 수 없음 / 재발은 새 건으로 등록
+DefectResolution	defectRecords.resolution	REWORK	REWORK	재작업 후 정상 복귀	재고 차감 없음 / 구역 간 이동으로 보관 구역에 넣어야 출고 가능
+DefectResolution	defectRecords.resolution	CONCESSION	CONCESSION	특채 사용	재고 차감 없음 / 품질 기준을 낮춰 사용
+DefectResolution	defectRecords.resolution	SUPPLIER_RETURN	SUPPLIER_RETURN	공급업체 반품	재고 차감 필요(폐기 화면) / 제조사 정보 필요
+DefectResolution	defectRecords.resolution	DISPOSAL	DISPOSAL	폐기	재고 차감 필요(폐기 화면)
