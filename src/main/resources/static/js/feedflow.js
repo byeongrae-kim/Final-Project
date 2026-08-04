@@ -1834,11 +1834,21 @@
 
                 updateMemberUi();
 
+                /*
+                 * 관리자 계정은 판매자센터로 이동합니다.
+                 * MemberController가 관리자 로그인에 id=0 응답을 반환합니다.
+                 */
+                if (Number(member.id) === 0) {
+                    window.location.href = "/admin";
+                    return;
+                }
+
                 if (state.pendingFavoriteId) {
                     const productId = state.pendingFavoriteId;
                     state.pendingFavoriteId = null;
                     await toggleFavorite(productId, true);
-                    window.location.href = "/mypage";
+                    // 로그인 후 기본 도착 화면은 마이페이지가 아닌 메인페이지입니다.
+                    window.location.href = "/";
                     return;
                 }
 
@@ -1847,7 +1857,8 @@
                     openModal("checkout-modal");
                     renderCheckoutSummary();
                 } else {
-                    window.location.href = "/mypage";
+                    // 일반 회원 로그인 성공 후 메인 쇼핑 화면으로 이동합니다.
+                    window.location.href = "/";
                 }
             } catch (error) {
                 showToast(error.message);
