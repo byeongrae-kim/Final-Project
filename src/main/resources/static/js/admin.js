@@ -20,11 +20,15 @@
 
     const state = {
         products: [],
+        orders: [],
+        alerts: [],
         editingId: null,
         query: "",
         animal: "ALL",
         stock: "ALL",
-        event: "ALL"
+        event: "ALL",
+        orderQuery: "",
+        orderStatus: "ALL"
     };
 
     const fields = Object.fromEntries(
@@ -39,6 +43,21 @@
         DUCK: "오리",
         PET: "반려동물",
         SUPPLEMENT: "영양제"
+    };
+
+    const orderStatusLabels = {
+        PAYMENT_PENDING: "결제 대기",
+        PAID: "결제 완료",
+        PREPARING: "상품 준비중",
+        SHIPPING: "배송중",
+        DELIVERED: "배송 완료",
+        CANCELLED: "취소"
+    };
+
+    const nextOrderStatus = {
+        PAID: ["PREPARING", "상품 준비 시작"],
+        PREPARING: ["SHIPPING", "배송 시작"],
+        SHIPPING: ["DELIVERED", "배송 완료 처리"]
     };
 
     function escapeHtml(value) {
@@ -94,6 +113,23 @@
         }
     }
 
+    async function adminFetch(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...(options.headers || {}),
+                "Authorization": basicAuthorization()
+            }
+        });
+        if (!response.ok) {
+            throw new Error(await readError(response));
+        }
+        if (response.status === 204) {
+            return null;
+        }
+        return response.json();
+    }
+
     async function loadProducts() {
         table.innerHTML = "<tr><td colspan=\"7\">상품을 불러오는 중입니다.</td></tr>";
 
@@ -114,8 +150,6 @@
         productCount.textContent = state.products.length;
         document.querySelector("#metric-total").textContent = number(state.products.length);
         document.querySelector("#metric-soldout").textContent = number(state.products.filter((product) => product.stock < 1).length);
-        document.querySelector("#metric-low").textContent = number(state.products.filter((product) => product.stock > 0 && product.stock <= 10).length);
-        document.querySelector("#metric-expiry").textContent = number(state.products.flatMap((product) => product.lots || []).filter((lot) => lot.daysRemaining <= 30).length);
 
         const query = state.query.toLowerCase();
         const products = state.products.filter((product) => {
@@ -160,6 +194,164 @@
                 </td>
             </tr>
         `;}).join("");
+    }
+
+    async function loadOrders() {
+        const orderTable = document.querySelector("#admin-order-table");
+        orderTable.innerHTML = "<tr><td colspan=\"6\">주문을 불러오는 중입니다.</td></tr>";
+        try {
+            state.orders = await adminFetch("/api/admin/orders");
+            renderOrders();
+        } catch (error) {
+            orderTable.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+            showToast(error.message, true);
+            throw error;
+        }
+    }
+
+    function renderOrders() {
+        const orderTable = document.querySelector("#admin-order-table");
+        const query = state.orderQuery.toLowerCase();
+        const orders = state.orders.filter((order) => {
+            const text = `${order.orderNumber} ${order.memberUsername || ""} ${order.farmName || ""} ${order.customerName || ""}`.toLowerCase();
+            return (!query || text.includes(query))
+                && (state.orderStatus === "ALL" || order.status === state.orderStatus);
+        });
+
+        document.querySelector("#admin-order-count").textContent = number(state.orders.length);
+        const today = new Date().toDateString();
+        document.querySelector("#metric-today-orders").textContent = number(
+            state.orders.filter((order) => order.orderedAt
+                && new Date(order.orderedAt).toDateString() === today).length
+        );
+
+        if (!orders.length) {
+            orderTable.innerHTML = "<tr><td colspan=\"6\">조건에 맞는 주문이 없습니다.</td></tr>";
+            return;
+        }
+
+        orderTable.innerHTML = orders.map((order) => {
+            const next = nextOrderStatus[order.status];
+            const itemText = (order.items || [])
+                .map((item) => `${escapeHtml(item.productName)} ${item.quantity}포`)
+                .join(", ") || "주문 상품 없음";
+            const shippingInputs = order.status === "PREPARING"
+                ? `<input data-order-carrier placeholder="배송사" value="${escapeHtml(order.trackingCarrier || "")}">
+                   <input data-order-tracking placeholder="송장번호" value="${escapeHtml(order.trackingNumber || "")}">`
+                : order.trackingNumber
+                ? `<small>${escapeHtml(order.trackingCarrier)} · ${escapeHtml(order.trackingNumber)}</small>`
+                : "";
+            const operation = next
+                ? `${shippingInputs}<button type="button" data-order-update="${escapeHtml(order.orderNumber)}" data-next-status="${next[0]}">${next[1]}</button>`
+                : shippingInputs || "-";
+
+            return `<tr>
+                <td><strong>${escapeHtml(order.orderNumber)}</strong><small>${new Date(order.orderedAt).toLocaleString("ko-KR")}</small></td>
+                <td><strong>${escapeHtml(order.farmName || order.customerName)}</strong><small>${escapeHtml(order.memberUsername || "-")} · ${escapeHtml(order.phone)}</small></td>
+                <td><span class="admin-order-items">${itemText}</span></td>
+                <td><strong>${number(order.totalAmount)}원</strong><small>${escapeHtml(order.paymentMethod)}</small></td>
+                <td><span class="admin-status order-${String(order.status).toLowerCase()}">${escapeHtml(orderStatusLabels[order.status] || order.status)}</span></td>
+                <td class="admin-order-operation">${operation}</td>
+            </tr>`;
+        }).join("");
+    }
+
+    async function updateOrderStatus(button) {
+        const row = button.closest("tr");
+        const status = button.dataset.nextStatus;
+        const orderNumber = button.dataset.orderUpdate;
+        const carrier = row.querySelector("[data-order-carrier]")?.value.trim() || null;
+        const trackingNumber = row.querySelector("[data-order-tracking]")?.value.trim() || null;
+
+        if (status === "SHIPPING" && (!carrier || !trackingNumber)) {
+            showToast("배송사와 송장번호를 모두 입력해주세요.", true);
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            await adminFetch(
+                `/api/admin/orders/${encodeURIComponent(orderNumber)}/status`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status, carrier, trackingNumber })
+                }
+            );
+            showToast(`${orderStatusLabels[status]} 상태로 변경했습니다.`);
+            await loadOrders();
+        } catch (error) {
+            button.disabled = false;
+            showToast(error.message, true);
+        }
+    }
+
+    async function loadInventoryAlerts() {
+        const alertTable = document.querySelector("#admin-alert-table");
+        alertTable.innerHTML = "<tr><td colspan=\"7\">LOT 경고를 불러오는 중입니다.</td></tr>";
+        try {
+            state.alerts = await adminFetch("/api/admin/inventory/alerts");
+            renderInventoryAlerts();
+        } catch (error) {
+            alertTable.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`;
+            showToast(error.message, true);
+            throw error;
+        }
+    }
+
+    function renderInventoryAlerts() {
+        const alertTable = document.querySelector("#admin-alert-table");
+        document.querySelector("#admin-alert-count").textContent = number(state.alerts.length);
+        document.querySelector("#metric-expiry").textContent = number(
+            state.alerts.filter((alert) => alert.expired || alert.expiringSoon).length
+        );
+        document.querySelector("#metric-low").textContent = number(
+            state.alerts.filter((alert) => alert.lowStock).length
+        );
+
+        if (!state.alerts.length) {
+            alertTable.innerHTML = "<tr><td colspan=\"7\">현재 재고·유통기한 경고가 없습니다.</td></tr>";
+            return;
+        }
+
+        alertTable.innerHTML = state.alerts.map((alert) => {
+            const remaining = alert.daysRemaining < 0
+                ? `${Math.abs(alert.daysRemaining)}일 경과`
+                : `${alert.daysRemaining}일`;
+            const action = alert.expired
+                ? "판매 중지 후 폐기 확인"
+                : alert.quantity === 0
+                ? "신규 LOT 입고 필요"
+                : alert.expiringSoon && alert.lowStock
+                ? "우선 출고 후 재입고 검토"
+                : alert.expiringSoon
+                ? "FEFO 우선 출고"
+                : "재입고 준비";
+            const tags = [
+                alert.expired ? "유통기한 만료" : alert.expiringSoon ? "유통기한 임박" : "",
+                alert.lowStock ? (alert.quantity === 0 ? "품절" : "재고 부족") : ""
+            ].filter(Boolean).map((tag) => `<span>${tag}</span>`).join("");
+
+            return `<tr class="alert-${String(alert.severity).toLowerCase()}">
+                <td><b class="lot-severity">${escapeHtml(alert.severity)}</b></td>
+                <td><strong>${escapeHtml(alert.productName)}</strong><small>상품 #${alert.productId}</small></td>
+                <td><strong>${escapeHtml(alert.lotNumber)}</strong></td>
+                <td>${escapeHtml(alert.expirationDate)}</td>
+                <td><strong>${remaining}</strong></td>
+                <td><strong>${number(alert.quantity)}포</strong></td>
+                <td><div class="lot-alert-tags">${tags}</div><small>${action}</small></td>
+            </tr>`;
+        }).join("");
+    }
+
+    async function loadAdminData() {
+        try {
+            basicAuthorization();
+            await Promise.all([loadOrders(), loadInventoryAlerts()]);
+            message.textContent = "관리자 인증이 완료되었습니다. 주문과 LOT 경고를 불러왔습니다.";
+        } catch (error) {
+            message.textContent = error.message;
+        }
     }
 
     function payloadFromForm() {
@@ -355,6 +547,23 @@
         } else if (button.dataset.action === "delete") {
             deleteProduct(productId);
         }
+    });
+    document.querySelector("#admin-order-table").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-order-update]");
+        if (button) {
+            updateOrderStatus(button);
+        }
+    });
+    document.querySelector("#admin-auth-load").addEventListener("click", loadAdminData);
+    document.querySelector("#admin-order-refresh").addEventListener("click", loadOrders);
+    document.querySelector("#admin-alert-refresh").addEventListener("click", loadInventoryAlerts);
+    document.querySelector("#admin-order-search").addEventListener("input", (event) => {
+        state.orderQuery = event.target.value.trim();
+        renderOrders();
+    });
+    document.querySelector("#admin-order-status-filter").addEventListener("change", (event) => {
+        state.orderStatus = event.target.value;
+        renderOrders();
     });
 
     document.querySelector("#admin-search").addEventListener("input", (event) => {

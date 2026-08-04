@@ -5,6 +5,7 @@ import com.ex.dto.OrderResponse;
 import com.ex.dto.PaymentConfigResponse;
 import com.ex.entity.*;
 import com.ex.repository.PurchaseOrderRepository;
+import com.ex.repository.ProductLotRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +23,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -45,15 +47,18 @@ public class PaymentService {
     private final RestClient restClient;
     private final PaymentProperties properties;
     private final PurchaseOrderRepository purchaseOrderRepository;
+    private final ProductLotRepository productLotRepository;
 
     public PaymentService(
             RestClient.Builder restClientBuilder,
             PaymentProperties properties,
-            PurchaseOrderRepository purchaseOrderRepository
+            PurchaseOrderRepository purchaseOrderRepository,
+            ProductLotRepository productLotRepository
     ) {
         this.restClient = restClientBuilder.build();
         this.properties = properties;
         this.purchaseOrderRepository = purchaseOrderRepository;
+        this.productLotRepository = productLotRepository;
     }
 
     /**
@@ -164,7 +169,7 @@ public class PaymentService {
             throw new IllegalArgumentException("포트원 웹훅의 결제번호 또는 주문번호가 없습니다.");
         }
 
-        PurchaseOrder order = purchaseOrderRepository.findByOrderNumber(merchantUid)
+        PurchaseOrder order = purchaseOrderRepository.findByOrderNumberForUpdate(merchantUid)
                 .orElseThrow(() -> new IllegalArgumentException("웹훅 주문을 찾을 수 없습니다."));
         verifyAndApplyPortOnePayment(order, impUid);
     }
@@ -234,6 +239,14 @@ public class PaymentService {
         if (amount != order.getTotalAmount()) {
             throw new IllegalArgumentException("포트원 결제 금액이 주문 금액과 일치하지 않습니다.");
         }
+
+        purchaseOrderRepository.findByProviderTransactionId(verifiedImpUid)
+                .filter(existing -> !isSameOrder(existing, order))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "이미 다른 주문에서 처리된 포트원 결제번호입니다."
+                    );
+                });
 
         if (order.getPaymentStatus() == PaymentStatus.DONE) {
             if (!secureEquals(order.getProviderTransactionId(), verifiedImpUid)) {
@@ -469,7 +482,7 @@ public class PaymentService {
         if (memberId == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
-        PurchaseOrder order = purchaseOrderRepository.findByOrderNumber(orderNumber)
+        PurchaseOrder order = purchaseOrderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
         if (order.getMember() == null || !memberId.equals(order.getMember().getId())) {
             throw new IllegalArgumentException("본인의 주문만 결제할 수 있습니다.");
@@ -481,7 +494,7 @@ public class PaymentService {
             String orderNumber,
             String callbackToken
     ) {
-        PurchaseOrder order = purchaseOrderRepository.findByOrderNumber(orderNumber)
+        PurchaseOrder order = purchaseOrderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
         requireCallbackToken(order, callbackToken);
         return order;
@@ -510,9 +523,31 @@ public class PaymentService {
             return;
         }
         order.cancel();
+        lockAllocatedLots(order);
         order.getItems().stream()
                 .flatMap(item -> item.getLotAllocations().stream())
                 .forEach(allocation -> allocation.getProductLot().increase(allocation.getQuantity()));
+    }
+
+    private void lockAllocatedLots(PurchaseOrder order) {
+        List<Long> lotIds = order.getItems().stream()
+                .flatMap(item -> item.getLotAllocations().stream())
+                .map(allocation -> allocation.getProductLot().getId())
+                .distinct()
+                .toList();
+        if (!lotIds.isEmpty()) {
+            productLotRepository.findAllByIdForUpdate(lotIds);
+        }
+    }
+
+    private boolean isSameOrder(PurchaseOrder left, PurchaseOrder right) {
+        if (left == right) {
+            return true;
+        }
+        if (left.getId() != null && right.getId() != null) {
+            return left.getId().equals(right.getId());
+        }
+        return left.getOrderNumber().equals(right.getOrderNumber());
     }
 
     private String formatVirtualAccountDueDate(long epochSeconds) {

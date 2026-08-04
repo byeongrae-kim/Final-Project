@@ -89,9 +89,11 @@
                 : order.status === "PAYMENT_PENDING"
                 ? `<button type="button" data-reconcile-payment="${escapeHtml(order.orderNumber)}">결제상태 확인</button>`
                 : "";
-        const actions = actionButton
-            ? `<div class="order-item-actions">${actionButton}</div>`
-            : "";
+        const detailLink = `
+            <a class="order-detail-link" href="/mypage/orders/${encodeURIComponent(order.orderNumber)}">
+                상세보기
+            </a>`;
+        const actions = `<div class="order-item-actions">${detailLink}${actionButton}</div>`;
         return `
             <article class="mypage-order-item">
                 <div class="order-item-top"><div><span>${escapeHtml(orderedAt)}</span><strong>${escapeHtml(order.orderNumber)}</strong></div><b class="status-${String(order.status).toLowerCase()}">${escapeHtml(statusLabel)}</b></div>

@@ -19,7 +19,7 @@ public class PaymentPageController {
     public String portOneRedirect(
             @RequestParam(name = "imp_uid", required = false) String impUid,
             @RequestParam(name = "merchant_uid") String merchantUid,
-            @RequestParam String token,
+            @RequestParam(name = "token") String token,
             @RequestParam(name = "error_code", required = false) String errorCode,
             @RequestParam(name = "error_msg", required = false) String errorMessage
     ) {

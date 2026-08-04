@@ -5,9 +5,11 @@ import com.ex.dto.FindUsernameResponse;
 import com.ex.dto.LoginRequest;
 import com.ex.dto.MemberResponse;
 import com.ex.dto.MemberUpdateRequest;
+import com.ex.dto.PasswordResetCodeRequest;
 import com.ex.dto.ResetPasswordRequest;
 import com.ex.dto.SignupRequest;
 import com.ex.service.MemberService;
+import com.ex.service.PasswordRecoveryService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import java.util.Map;
 public class MemberController {
 
     private final MemberService memberService;
+    private final PasswordRecoveryService passwordRecoveryService;
 
     @Value("${feedflow.admin.username:}")
     private String adminUsername;
@@ -95,11 +98,22 @@ public class MemberController {
         return memberService.findUsername(request);
     }
 
+    @PostMapping("/password-reset/code")
+    public Map<String, String> issuePasswordResetCode(
+            @Valid @RequestBody PasswordResetCodeRequest request
+    ) {
+        passwordRecoveryService.issueCode(request);
+        return Map.of(
+                "message",
+                "회원정보가 일치하면 인증번호를 발송했습니다. 개발 환경에서는 STS Console을 확인해주세요."
+        );
+    }
+
     @PostMapping("/reset-password")
     public Map<String, String> resetPassword(
             @Valid @RequestBody ResetPasswordRequest request
     ) {
-        memberService.resetPassword(request);
+        passwordRecoveryService.resetPassword(request);
         return Map.of(
                 "message",
                 "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요."

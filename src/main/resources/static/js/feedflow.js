@@ -13,7 +13,8 @@
         pendingCheckout: false,
         pendingFavoriteId: null,
         usernameAvailable: false,
-        paymentConfig: null
+        paymentConfig: null,
+        passwordResetCodeRequested: false
     };
 
     const $ = (selector, root = document) => root.querySelector(selector);
@@ -1799,6 +1800,68 @@
         }
     );
 
+    $("#reset-password-code")?.addEventListener(
+        "input",
+        (event) => {
+            event.target.value = event.target.value
+                .replace(/[^0-9]/g, "")
+                .slice(0, 6);
+        }
+    );
+
+    [
+        "#reset-password-username",
+        "#reset-password-email",
+        "#reset-password-phone"
+    ].forEach((selector) => {
+        $(selector)?.addEventListener("input", () => {
+            state.passwordResetCodeRequested = false;
+            const codeLabel = $("#reset-password-code-label");
+            if (codeLabel) {
+                codeLabel.hidden = true;
+            }
+            const codeInput = $("#reset-password-code");
+            if (codeInput) {
+                codeInput.value = "";
+            }
+        });
+    });
+
+    $("#reset-password-code-request")?.addEventListener(
+        "click",
+        async () => {
+            const username = $("#reset-password-username").value.trim();
+            const email = $("#reset-password-email").value.trim();
+            const phone = $("#reset-password-phone").value.trim();
+            const button = $("#reset-password-code-request");
+
+            if (!username || !email || phone.replace(/[^0-9]/g, "").length < 10) {
+                showToast("아이디, 이메일, 휴대전화를 먼저 정확히 입력해주세요.");
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const result = await api(
+                    "/api/members/password-reset/code",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username, email, phone })
+                    }
+                );
+                state.passwordResetCodeRequested = true;
+                $("#reset-password-code-label").hidden = false;
+                $("#reset-password-code").focus();
+                showToast(result.message);
+            } catch (error) {
+                showToast(error.message);
+            } finally {
+                button.disabled = false;
+            }
+        }
+    );
+
     $("#signup-email")?.addEventListener(
         "input",
         validateEmail
@@ -1907,6 +1970,14 @@
 
             const username = $("#reset-password-username").value.trim();
             const newPassword = $("#reset-password-new").value;
+            const verificationCode = $("#reset-password-code").value.trim();
+
+            if (!state.passwordResetCodeRequested
+                    || !/^[0-9]{6}$/.test(verificationCode)) {
+                showToast("인증번호를 발급받아 숫자 6자리를 입력해주세요.");
+                $("#reset-password-code-request").focus();
+                return;
+            }
 
             // [수정] 회원가입과 동일한 비밀번호 유효성 검사를 통과해야 합니다.
             if (!validateResetPassword()) {
@@ -1934,14 +2005,15 @@
                         },
                         body: JSON.stringify({
                             username,
-                            email: $("#reset-password-email").value.trim(),
-                            phone: $("#reset-password-phone").value.trim(),
+                            verificationCode,
                             newPassword
                         })
                     }
                 );
 
                 $("#reset-password-form").reset();
+                state.passwordResetCodeRequested = false;
+                $("#reset-password-code-label").hidden = true;
 
                 // [수정] 성공 후 입력창과 검사 안내를 처음 상태로 되돌립니다.
                 $("#reset-password-new")?.classList.remove(

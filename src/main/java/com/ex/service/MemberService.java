@@ -5,7 +5,6 @@ import com.ex.dto.MemberResponse;
 import com.ex.dto.MemberUpdateRequest;
 import com.ex.dto.FindUsernameRequest;
 import com.ex.dto.FindUsernameResponse;
-import com.ex.dto.ResetPasswordRequest;
 import com.ex.dto.SignupRequest;
 import com.ex.entity.AddressType;
 import com.ex.entity.DeliveryAddress;
@@ -84,30 +83,46 @@ public class MemberService {
         );
     }
 
-    @Transactional
-    public void resetPassword(ResetPasswordRequest request) {
-        String username = normalizeUsername(request.username());
-        String email = normalizeEmail(request.email());
-        String phone = normalizePhone(request.phone());
+    @Transactional(readOnly = true)
+    public boolean matchesPasswordRecoveryIdentity(
+            String username,
+            String email,
+            String phone
+    ) {
+        String normalizedUsername = normalizeUsername(username);
+        String normalizedEmail = normalizeEmail(email);
+        String normalizedPhone = normalizePhone(phone);
 
-        Member member = memberRepository
+        return memberRepository
                 .findByUsernameIgnoreCaseAndEmailIgnoreCase(
-                        username,
-                        email
+                        normalizedUsername,
+                        normalizedEmail
                 )
                 .filter(Member::isActive)
-                .filter(foundMember -> normalizePhone(foundMember.getPhone()).equals(phone))
+                .filter(member -> normalizePhone(member.getPhone())
+                        .equals(normalizedPhone))
+                .isPresent();
+    }
+
+    @Transactional
+    public void updatePasswordAfterVerification(
+            String username,
+            String newPassword
+    ) {
+        Member member = memberRepository
+                .findByUsernameIgnoreCase(normalizeUsername(username))
+                .filter(Member::isActive)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "입력한 회원 정보가 일치하지 않습니다."
+                        "인증번호가 올바르지 않거나 만료되었습니다. 다시 발급해주세요."
                 ));
 
-        if (passwordEncoder.matches(request.newPassword(), member.getPassword())) {
+        if (passwordEncoder.matches(newPassword, member.getPassword())) {
             throw new IllegalArgumentException(
                     "현재 비밀번호와 다른 새 비밀번호를 입력해주세요."
             );
         }
 
-        member.setPassword(passwordEncoder.encode(request.newPassword()));
+        member.setPassword(passwordEncoder.encode(newPassword));
     }
 
     @Transactional(readOnly = true)

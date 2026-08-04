@@ -39,6 +39,43 @@ public class H2SchemaMigration implements ApplicationRunner {
             }
 
             migratePaymentProviderConstraint(connection);
+            createPaymentTransactionUniqueIndex(connection);
+        }
+    }
+
+    private void createPaymentTransactionUniqueIndex(Connection connection) throws Exception {
+        if (!columnExists(connection, "PURCHASE_ORDER", "PROVIDER_TRANSACTION_ID")) {
+            return;
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    create unique index if not exists
+                    ux_purchase_order_provider_transaction
+                    on purchase_order(provider_transaction_id)
+                    """);
+        }
+        log.info("H2 포트원 결제번호 중복 방지 인덱스를 확인했습니다.");
+    }
+
+    private boolean columnExists(
+            Connection connection,
+            String tableName,
+            String columnName
+    ) throws Exception {
+        String query = """
+                select count(*)
+                from information_schema.columns
+                where upper(table_schema) = 'PUBLIC'
+                  and upper(table_name) = ?
+                  and upper(column_name) = ?
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, tableName.toUpperCase(Locale.ROOT));
+            statement.setString(2, columnName.toUpperCase(Locale.ROOT));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1) > 0;
+            }
         }
     }
 

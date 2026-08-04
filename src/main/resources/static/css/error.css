@@ -1,0 +1,54 @@
+:root {
+    --forest: #17623f;
+    --forest-dark: #0d3828;
+    --paper: #fffdf7;
+    --cream: #f1f0e8;
+    --ink: #13231c;
+    --muted: #69736d;
+    --line: #d9d8cf;
+    --orange: #ef7d18;
+}
+
+* { box-sizing: border-box; }
+body {
+    min-height: 100vh;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(circle at 80% 10%, rgba(23, 98, 63, .13), transparent 32%),
+        var(--cream);
+    color: var(--ink);
+    font-family: "Malgun Gothic", Arial, sans-serif;
+}
+.error-page { width: min(760px, calc(100% - 32px)); }
+.error-card {
+    padding: 56px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    box-shadow: 0 24px 70px rgba(13, 56, 40, .11);
+}
+.error-brand img { width: 112px; height: 94px; object-fit: contain; mix-blend-mode: multiply; }
+.error-code { margin: 32px 0 8px; color: var(--orange); font: 800 13px Georgia, serif; letter-spacing: .18em; }
+.error-card h1 { margin: 0; color: var(--forest-dark); font-size: clamp(30px, 6vw, 52px); line-height: 1.25; }
+.error-description { max-width: 560px; margin: 20px 0 30px; color: var(--muted); font-size: 14px; line-height: 1.8; }
+.error-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.error-actions a {
+    min-height: 46px;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--forest);
+    color: var(--forest);
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+}
+.error-actions a:first-child { background: var(--forest); color: white; }
+.error-reference { margin: 28px 0 0; color: #929a95; font-size: 10px; }
+
+@media (max-width: 600px) {
+    .error-card { padding: 34px 24px; }
+    .error-actions { flex-direction: column; }
+    .error-actions a { justify-content: center; }
+}

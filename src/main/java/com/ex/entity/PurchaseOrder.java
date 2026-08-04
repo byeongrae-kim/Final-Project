@@ -65,7 +65,7 @@ public class PurchaseOrder extends BaseTimeEntity {
     @Builder.Default
     private PaymentStatus paymentStatus = PaymentStatus.READY;
 
-    @Column(name = "provider_transaction_id", length = 200)
+    @Column(name = "provider_transaction_id", unique = true, length = 200)
     private String providerTransactionId;
 
     @Column(name = "payment_callback_token", length = 36)
@@ -88,6 +88,24 @@ public class PurchaseOrder extends BaseTimeEntity {
 
     @Column(name = "payment_approved_at")
     private LocalDateTime paymentApprovedAt;
+
+    @Column(name = "preparing_at")
+    private LocalDateTime preparingAt;
+
+    @Column(name = "shipped_at")
+    private LocalDateTime shippedAt;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "tracking_carrier", length = 40)
+    private String trackingCarrier;
+
+    @Column(name = "tracking_number", length = 80)
+    private String trackingNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -152,6 +170,36 @@ public class PurchaseOrder extends BaseTimeEntity {
         this.paymentStatus = PaymentStatus.CANCELLED;
     }
 
+    public void startPreparing() {
+        if (status != OrderStatus.PAID) {
+            throw new IllegalArgumentException("결제완료 주문만 상품 준비를 시작할 수 있습니다.");
+        }
+        status = OrderStatus.PREPARING;
+        preparingAt = LocalDateTime.now();
+    }
+
+    public void startShipping(String carrier, String trackingNumber) {
+        if (status != OrderStatus.PREPARING) {
+            throw new IllegalArgumentException("상품 준비중 주문만 배송을 시작할 수 있습니다.");
+        }
+        if (carrier == null || carrier.isBlank()
+                || trackingNumber == null || trackingNumber.isBlank()) {
+            throw new IllegalArgumentException("배송사와 송장번호를 모두 입력해주세요.");
+        }
+        this.trackingCarrier = carrier.trim();
+        this.trackingNumber = trackingNumber.trim();
+        this.status = OrderStatus.SHIPPING;
+        this.shippedAt = LocalDateTime.now();
+    }
+
+    public void completeDelivery() {
+        if (status != OrderStatus.SHIPPING) {
+            throw new IllegalArgumentException("배송중 주문만 배송완료로 변경할 수 있습니다.");
+        }
+        status = OrderStatus.DELIVERED;
+        deliveredAt = LocalDateTime.now();
+    }
+
     public void cancel() {
         if (status == OrderStatus.SHIPPING || status == OrderStatus.DELIVERED) {
             throw new IllegalArgumentException("배송이 시작된 주문은 취소할 수 없습니다.");
@@ -160,5 +208,6 @@ public class PurchaseOrder extends BaseTimeEntity {
             throw new IllegalArgumentException("이미 취소된 주문입니다.");
         }
         status = OrderStatus.CANCELLED;
+        cancelledAt = LocalDateTime.now();
     }
 }

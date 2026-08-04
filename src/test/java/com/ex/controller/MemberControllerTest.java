@@ -1,5 +1,6 @@
 package com.ex.controller;
 
+import com.ex.service.RecoveryCodeSender;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -7,6 +8,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +24,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@Import(MemberControllerTest.RecoveryTestConfiguration.class)
 class MemberControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private CapturingRecoveryCodeSender recoveryCodeSender;
 
     @Test
     void 아이디중복검사후회원가입하고아이디로로그인한다() throws Exception {
@@ -131,16 +140,46 @@ class MemberControllerTest {
                 .andExpect(jsonPath("$.username").value("findfarm"))
                 .andExpect(jsonPath("$.message").value("가입한 아이디를 찾았습니다."));
 
-        mockMvc.perform(post("/api/members/reset-password")
+        mockMvc.perform(post("/api/members/password-reset/code")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "username": "findfarm",
                                   "email": "find@example.com",
-                                  "phone": "01042705271",
-                                  "newPassword": "Changed!456"
+                                  "phone": "01042705271"
                                 }
                                 """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(
+                        "회원정보가 일치하면 인증번호를 발송했습니다. 개발 환경에서는 STS Console을 확인해주세요."
+                ));
+
+        String wrongCode = "000000".equals(recoveryCodeSender.code)
+                ? "000001"
+                : "000000";
+        mockMvc.perform(post("/api/members/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "findfarm",
+                                  "verificationCode": "%s",
+                                  "newPassword": "Changed!456"
+                                }
+                                """.formatted(wrongCode)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        "인증번호가 올바르지 않거나 만료되었습니다. 다시 발급해주세요."
+                ));
+
+        mockMvc.perform(post("/api/members/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "findfarm",
+                                  "verificationCode": "%s",
+                                  "newPassword": "Changed!456"
+                                }
+                                """.formatted(recoveryCodeSender.code)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value(
                         "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요."
@@ -166,6 +205,24 @@ class MemberControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("findfarm"));
+    }
+
+    @TestConfiguration
+    static class RecoveryTestConfiguration {
+        @Bean
+        @Primary
+        CapturingRecoveryCodeSender capturingRecoveryCodeSender() {
+            return new CapturingRecoveryCodeSender();
+        }
+    }
+
+    static class CapturingRecoveryCodeSender implements RecoveryCodeSender {
+        private String code;
+
+        @Override
+        public void send(String username, String maskedDestination, String verificationCode) {
+            this.code = verificationCode;
+        }
     }
 
     private String signupBody(String username, String email) {

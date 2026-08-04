@@ -472,6 +472,23 @@ footer { padding: 45px max(30px, calc((100vw - 1180px) / 2)); background: #0d281
     min-height: 40px;
     margin-top: 8px;
 }
+.recovery-code-button {
+    width: 100%;
+    min-height: 44px;
+    margin: -2px 0 8px;
+    border: 1px solid var(--forest);
+    background: white;
+    color: var(--forest);
+    font-size: 12px;
+    font-weight: 800;
+}
+.recovery-code-button:disabled { cursor: wait; opacity: .55; }
+.recovery-code-guide {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.55;
+}
 .account-panel label, .checkout-fields > label, .form-grid label, .admin-auth label, .admin-form-grid label {
     display: flex;
     flex-direction: column;
@@ -1016,12 +1033,35 @@ footer { padding: 45px max(30px, calc((100vw - 1180px) / 2)); background: #0d281
 .admin-status.low-stock, .admin-event { background: #fff1de; color: #aa590e; }
 .admin-status.sold-out { background: #eeeeeb; color: #6b716c; }
 
+/* 관리자 주문·LOT 운영 */
+.admin-auth-action { display: flex; align-items: center; gap: 14px; }
+.admin-auth-action button { min-height: 46px; padding: 0 16px; border: 0; background: var(--forest); color: white; font-weight: 800; white-space: nowrap; }
+.admin-auth-action p { margin: 0; }
+.admin-order-tools { grid-template-columns: 2fr 1fr; }
+.admin-order-items { max-width: 260px; display: block; color: var(--muted); line-height: 1.55; }
+.admin-order-operation { min-width: 230px; }
+.admin-order-operation input { width: 105px; min-height: 38px; margin: 0 5px 6px 0; padding: 0 8px; border: 1px solid var(--line); }
+.admin-order-operation button { border-color: var(--forest) !important; background: var(--forest) !important; color: white; }
+.admin-status.order-payment_pending { background: #fff1de; color: #aa590e; }
+.admin-status.order-paid, .admin-status.order-preparing { background: #eaf4ee; color: var(--forest); }
+.admin-status.order-shipping { background: #e5eef9; color: #245c94; }
+.admin-status.order-delivered { background: var(--forest); color: white; }
+.admin-status.order-cancelled { background: #f5e7e5; color: var(--danger); }
+.admin-section-note { margin: -10px 0 20px; color: var(--muted); font-size: 12px; }
+.lot-severity { padding: 5px 8px; border-radius: 20px; font-size: 10px; }
+.alert-danger .lot-severity { background: #f5e7e5; color: var(--danger); }
+.alert-warning .lot-severity { background: #fff1de; color: #aa590e; }
+.alert-notice .lot-severity { background: #e5eef9; color: #245c94; }
+.lot-alert-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.lot-alert-tags span { padding: 4px 6px; background: #f1f0e8; color: var(--forest-dark); font-size: 10px; font-weight: 800; }
+
 @media (max-width: 1050px) {
     .admin-page { grid-template-columns: 1fr; }
     .admin-sidebar { position: static; width: 100%; height: auto; }
     .admin-sidebar nav { margin: 18px 0; grid-template-columns: repeat(5, 1fr); }
     .admin-dashboard { grid-template-columns: repeat(2, 1fr); }
     .admin-tools { grid-template-columns: 1fr 1fr; }
+    .admin-auth-action { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 760px) {

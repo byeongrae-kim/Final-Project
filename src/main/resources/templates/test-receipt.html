@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${siteName}">FEED FLOW 테스트 결제 확인서</title>
+    <link rel="icon" type="image/png" th:href="@{/images/feedflow-logo.png}" href="/images/feedflow-logo.png">
+    <link rel="stylesheet" th:href="@{/css/feedflow.css}" href="/css/feedflow.css">
+    <link rel="stylesheet" th:href="@{/css/mypage.css}" href="/css/mypage.css">
+</head>
+<body class="mypage-body">
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<header class="mypage-header">
+    <a class="brand" href="/">
+        <span class="brand-logo"><img th:src="@{/images/feedflow-logo.png}" src="/images/feedflow-logo.png" alt="FEED FLOW"></span>
+    </a>
+    <nav><a href="/mypage">마이페이지</a></nav>
+</header>
+
+<main id="receipt-page" class="receipt-page" th:attr="data-order-number=${orderNumber}">
+    <section class="receipt-sheet" aria-labelledby="receipt-title">
+        <span class="receipt-badge">TEST PAYMENT DOCUMENT</span>
+        <div class="receipt-heading">
+            <div>
+                <h1 id="receipt-title">테스트 결제 확인서</h1>
+                <p>FEED FLOW 주문 결제 내역</p>
+            </div>
+            <strong id="receipt-grand-heading">불러오는 중</strong>
+        </div>
+
+        <dl id="receipt-meta" class="receipt-meta"></dl>
+
+        <table class="receipt-items">
+            <thead><tr><th>상품명</th><th>수량</th><th>단가</th><th>구매금액</th></tr></thead>
+            <tbody id="receipt-items"><tr><td colspan="4">결제 정보를 불러오는 중입니다.</td></tr></tbody>
+        </table>
+
+        <dl id="receipt-totals" class="receipt-totals"></dl>
+
+        <p class="receipt-notice">
+            이 문서는 테스트 결제 결과를 확인하기 위해 FEED FLOW가 자체 생성한 화면입니다.
+            카드전표, 현금영수증, 세금계산서 등 법적·세무 증빙으로 사용할 수 없습니다.
+        </p>
+
+        <div class="receipt-actions">
+            <a th:href="@{/mypage/orders/{orderNumber}(orderNumber=${orderNumber})}" href="/mypage">주문 상세로</a>
+            <button id="receipt-print" type="button">인쇄하기</button>
+        </div>
+    </section>
+</main>
+
+<script th:src="@{/js/test-receipt.js}" src="/js/test-receipt.js" defer></script>
+</body>
+</html>

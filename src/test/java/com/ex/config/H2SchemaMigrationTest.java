@@ -19,11 +19,12 @@ class H2SchemaMigrationTest {
         jdbcTemplate.execute("""
                 create table purchase_order (
                     purchase_order_id bigint primary key,
-                    payment_provider enum('KAKAO', 'TOSS')
+                    payment_provider enum('KAKAO', 'TOSS'),
+                    provider_transaction_id varchar(200)
                 )
                 """);
         jdbcTemplate.update(
-                "insert into purchase_order values (?, ?)",
+                "insert into purchase_order(purchase_order_id, payment_provider) values (?, ?)",
                 1L,
                 "KAKAO"
         );
@@ -31,7 +32,7 @@ class H2SchemaMigrationTest {
         new H2SchemaMigration(dataSource).run(null);
 
         jdbcTemplate.update(
-                "insert into purchase_order values (?, ?)",
+                "insert into purchase_order(purchase_order_id, payment_provider) values (?, ?)",
                 2L,
                 "PORTONE"
         );
@@ -44,5 +45,16 @@ class H2SchemaMigrationTest {
                 "select payment_provider from purchase_order where purchase_order_id = 1",
                 String.class
         )).isEqualTo("KAKAO");
+
+        jdbcTemplate.update(
+                "update purchase_order set provider_transaction_id = ? where purchase_order_id = ?",
+                "imp_unique_001",
+                1L
+        );
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbcTemplate.update(
+                "update purchase_order set provider_transaction_id = ? where purchase_order_id = ?",
+                "imp_unique_001",
+                2L
+        )).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 }

@@ -1,6 +1,7 @@
 package com.ex.service;
 
 import com.ex.dto.CreateOrderRequest;
+import com.ex.dto.OrderDetailResponse;
 import com.ex.dto.OrderResponse;
 import com.ex.entity.*;
 import com.ex.repository.ProductLotRepository;
@@ -95,16 +96,28 @@ public class OrderService {
         if (memberId == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
-        PurchaseOrder order = purchaseOrderRepository.findByOrderNumber(orderNumber)
+        PurchaseOrder order = purchaseOrderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
         if (order.getMember() == null || !order.getMember().getId().equals(memberId)) {
             throw new IllegalArgumentException("본인의 주문만 취소할 수 있습니다.");
         }
         order.cancel();
+        lockAllocatedLots(order);
         order.getItems().stream()
                 .flatMap(item -> item.getLotAllocations().stream())
                 .forEach(allocation -> allocation.getProductLot().increase(allocation.getQuantity()));
         return toResponse(order);
+    }
+
+    private void lockAllocatedLots(PurchaseOrder order) {
+        List<Long> lotIds = order.getItems().stream()
+                .flatMap(item -> item.getLotAllocations().stream())
+                .map(allocation -> allocation.getProductLot().getId())
+                .distinct()
+                .toList();
+        if (!lotIds.isEmpty()) {
+            productLotRepository.findAllByIdForUpdate(lotIds);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -120,7 +133,10 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderResponse findMemberOrder(String orderNumber, Long memberId) {
+    public OrderDetailResponse findMemberOrder(String orderNumber, Long memberId) {
+        if (memberId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
         PurchaseOrder order = purchaseOrderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
 
@@ -128,7 +144,7 @@ public class OrderService {
             throw new IllegalArgumentException("본인의 주문만 확인할 수 있습니다.");
         }
 
-        return OrderResponse.from(order);
+        return OrderDetailResponse.from(order);
     }
 
     private void decreaseStock(Long productId, int requestedQuantity, OrderItem orderItem) {

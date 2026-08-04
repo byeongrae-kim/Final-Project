@@ -98,6 +98,16 @@ class OrderControllerTest {
         JsonNode json = objectMapper.readTree(response);
         String orderNumber = json.get("orderNumber").asText();
 
+        mockMvc.perform(get(
+                        "/api/orders/{orderNumber}",
+                        orderNumber
+                ).session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customerName").value("김농부"))
+                .andExpect(jsonPath("$.address").value("충남 천안시 서북구 농장로 24"))
+                .andExpect(jsonPath("$.items[0].lots[0].lotNumber").isNotEmpty())
+                .andExpect(jsonPath("$.items[0].lots[0].quantity").value(2));
+
         mockMvc.perform(patch(
                         "/api/orders/{orderNumber}/cancel",
                         orderNumber

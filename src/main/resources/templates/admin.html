@@ -15,8 +15,8 @@
         <nav>
             <a class="active" href="#dashboard">대시보드</a>
             <a href="#catalog">상품 관리</a>
-            <a href="#catalog">주문 관리</a>
-            <a href="#inventory">재고·LOT 현황</a>
+            <a href="#orders">주문 관리</a>
+            <a href="#inventory-alerts">재고·LOT 경고</a>
             <a href="/">구매 사이트</a>
         </nav>
         <p>상품·LOT 재고는 H2 DB에 저장되며 구매 화면에 즉시 반영됩니다.</p>
@@ -31,18 +31,59 @@
     <section class="admin-auth" aria-label="관리자 API 인증">
         <label>관리자 아이디<input id="admin-username" autocomplete="username"></label>
         <label>관리자 비밀번호<input id="admin-password" type="password" autocomplete="current-password"></label>
-        <p id="admin-message">Spring Boot 실행 환경변수와 같은 관리자 계정을 입력하세요.</p>
+        <div class="admin-auth-action"><button id="admin-auth-load" type="button">관리 데이터 불러오기</button><p id="admin-message">Spring Boot 실행 환경변수와 같은 관리자 계정을 입력하세요.</p></div>
     </section>
 
     <section id="dashboard" class="admin-dashboard">
         <article><span>전체 판매 상품</span><strong id="metric-total">0</strong><small>개</small></article>
         <article><span>품절 상품</span><strong id="metric-soldout">0</strong><small>개</small></article>
         <article><span>유통기한 30일 이내</span><strong id="metric-expiry">0</strong><small>LOT</small></article>
-        <article><span>재고 10포 이하</span><strong id="metric-low">0</strong><small>개</small></article>
-        <article><span>오늘 주문</span><strong>실시간</strong><small>주문 API</small></article>
+        <article><span>재고 10포 이하</span><strong id="metric-low">0</strong><small>LOT</small></article>
+        <article><span>오늘 주문</span><strong id="metric-today-orders">0</strong><small>건</small></article>
     </section>
 
-    <section id="inventory" class="admin-editor">
+    <section id="orders" class="admin-products admin-orders">
+        <div class="admin-title">
+            <div><small>ORDER CONTROL</small><h2>주문·배송 관리 <span id="admin-order-count">0</span>건</h2></div>
+            <button id="admin-order-refresh" type="button">새로고침</button>
+        </div>
+        <div class="admin-tools admin-order-tools">
+            <label>주문 검색<input id="admin-order-search" type="search" placeholder="주문번호, 회원, 농장명"></label>
+            <label>주문 상태
+                <select id="admin-order-status-filter">
+                    <option value="ALL">전체 상태</option>
+                    <option value="PAYMENT_PENDING">결제 대기</option>
+                    <option value="PAID">결제 완료</option>
+                    <option value="PREPARING">상품 준비중</option>
+                    <option value="SHIPPING">배송중</option>
+                    <option value="DELIVERED">배송 완료</option>
+                    <option value="CANCELLED">취소</option>
+                </select>
+            </label>
+        </div>
+        <div class="admin-table-wrap">
+            <table>
+                <thead><tr><th>주문번호 / 일시</th><th>회원·농장</th><th>주문 상품</th><th>결제금액</th><th>현재 상태</th><th>배송·상태 변경</th></tr></thead>
+                <tbody id="admin-order-table"><tr><td colspan="6">관리자 인증 후 주문을 불러오세요.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="inventory-alerts" class="admin-products admin-inventory-alerts">
+        <div class="admin-title">
+            <div><small>LOT WATCH</small><h2>LOT 재고·유통기한 경고 <span id="admin-alert-count">0</span>건</h2></div>
+            <button id="admin-alert-refresh" type="button">새로고침</button>
+        </div>
+        <p class="admin-section-note">잔여재고 10포 이하 또는 유통기한 30일 이내 LOT을 자동으로 표시합니다.</p>
+        <div class="admin-table-wrap">
+            <table>
+                <thead><tr><th>위험도</th><th>상품</th><th>LOT 번호</th><th>유통기한</th><th>잔여일</th><th>재고</th><th>조치 권장</th></tr></thead>
+                <tbody id="admin-alert-table"><tr><td colspan="7">관리자 인증 후 LOT 경고를 불러오세요.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="product-editor" class="admin-editor">
         <div class="admin-title">
             <div><small id="editor-eyebrow">NEW PRODUCT</small><h2 id="editor-title">새 상품 등록</h2></div>
             <button id="cancel-edit" type="button" hidden>수정 취소</button>

@@ -45,7 +45,7 @@ public class PaymentController {
     /** 결제 승인 후 DB 반영이 실패한 본인 주문을 PortOne 주문번호로 재검증합니다. */
     @PostMapping("/portone/reconcile/{orderNumber}")
     public OrderResponse reconcilePortOne(
-            @PathVariable String orderNumber,
+            @PathVariable(name = "orderNumber") String orderNumber,
             HttpSession session
     ) {
         return paymentService.reconcilePortOne(
@@ -57,8 +57,8 @@ public class PaymentController {
     /** 결제창 취소 등으로 거래번호가 발급되지 않은 결제대기 주문만 안전하게 해제합니다. */
     @PostMapping("/portone/fail")
     public void failPortOne(
-            @RequestParam String orderNumber,
-            @RequestParam String token,
+            @RequestParam(name = "orderNumber") String orderNumber,
+            @RequestParam(name = "token") String token,
             HttpSession session
     ) {
         paymentService.failPendingPayment(

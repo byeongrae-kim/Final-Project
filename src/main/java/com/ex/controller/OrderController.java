@@ -1,6 +1,7 @@
 package com.ex.controller;
 
 import com.ex.dto.CreateOrderRequest;
+import com.ex.dto.OrderDetailResponse;
 import com.ex.dto.OrderResponse;
 import com.ex.service.OrderService;
 import com.ex.service.PaymentService;
@@ -41,7 +42,7 @@ public class OrderController {
     }
 
     @GetMapping("/{orderNumber}")
-    public OrderResponse findMyOrder(
+    public OrderDetailResponse findMyOrder(
             @PathVariable(name = "orderNumber") String orderNumber,
             HttpSession session
     ) {

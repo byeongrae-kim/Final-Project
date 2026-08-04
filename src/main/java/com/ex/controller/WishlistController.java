@@ -29,7 +29,7 @@ public class WishlistController {
     @PostMapping("/{productId}")
     @ResponseStatus(HttpStatus.CREATED)
     public void add(
-            @PathVariable Long productId,
+            @PathVariable(name = "productId") Long productId,
             HttpSession session
     ) {
         wishlistService.add(memberId(session), productId);
@@ -38,7 +38,7 @@ public class WishlistController {
     @DeleteMapping("/{productId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(
-            @PathVariable Long productId,
+            @PathVariable(name = "productId") Long productId,
             HttpSession session
     ) {
         wishlistService.remove(memberId(session), productId);

@@ -9,6 +9,7 @@ import com.ex.entity.PaymentProvider;
 import com.ex.entity.PaymentStatus;
 import com.ex.entity.PurchaseOrder;
 import com.ex.repository.PurchaseOrderRepository;
+import com.ex.repository.ProductLotRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -38,6 +39,7 @@ class PaymentServiceTest {
 
     private MockRestServiceServer server;
     private PurchaseOrderRepository purchaseOrderRepository;
+    private ProductLotRepository productLotRepository;
     private PaymentService paymentService;
 
     @BeforeEach
@@ -45,6 +47,7 @@ class PaymentServiceTest {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         purchaseOrderRepository = mock(PurchaseOrderRepository.class);
+        productLotRepository = mock(ProductLotRepository.class);
 
         PaymentProperties properties = new PaymentProperties();
         properties.getPortone().setCustomerCode("imp00000000");
@@ -54,7 +57,8 @@ class PaymentServiceTest {
         paymentService = new PaymentService(
                 builder,
                 properties,
-                purchaseOrderRepository
+                purchaseOrderRepository,
+                productLotRepository
         );
     }
 
@@ -74,8 +78,10 @@ class PaymentServiceTest {
                 .discountAmount(0)
                 .totalAmount(57_800)
                 .build();
-        when(purchaseOrderRepository.findByOrderNumber(ORDER_NUMBER))
+        when(purchaseOrderRepository.findByOrderNumberForUpdate(ORDER_NUMBER))
                 .thenReturn(Optional.of(order));
+        when(purchaseOrderRepository.findByProviderTransactionId(IMP_UID))
+                .thenReturn(Optional.empty());
 
         server.expect(once(), requestTo("https://api.iamport.kr/users/getToken"))
                 .andExpect(method(HttpMethod.POST))
@@ -166,7 +172,7 @@ class PaymentServiceTest {
                 .discountAmount(0)
                 .totalAmount(15_000)
                 .build();
-        when(purchaseOrderRepository.findByOrderNumber("FF-VBANK-001"))
+        when(purchaseOrderRepository.findByOrderNumberForUpdate("FF-VBANK-001"))
                 .thenReturn(Optional.of(order));
 
         server.expect(once(), requestTo("https://api.iamport.kr/users/getToken"))
@@ -203,6 +209,67 @@ class PaymentServiceTest {
 
         assertThat(result.status()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(result.paymentStatus()).isEqualTo(PaymentStatus.CANCELLED);
+        server.verify();
+    }
+
+    @Test
+    void repeatedCallbackWithSameImpUidReturnsAlreadyCompletedOrder() {
+        PurchaseOrder order = PurchaseOrder.builder()
+                .id(22L)
+                .orderNumber(ORDER_NUMBER)
+                .customerName("테스트 농장")
+                .phone("010-0000-0000")
+                .address("테스트 주소")
+                .paymentMethod(PaymentMethod.KAKAO_PAY)
+                .paymentProvider(PaymentProvider.PORTONE)
+                .providerTransactionId(IMP_UID)
+                .paymentStatus(PaymentStatus.DONE)
+                .paymentCallbackToken(CALLBACK_TOKEN)
+                .status(OrderStatus.PAID)
+                .productAmount(52_800)
+                .deliveryFee(5_000)
+                .discountAmount(0)
+                .totalAmount(57_800)
+                .build();
+        when(purchaseOrderRepository.findByOrderNumberForUpdate(ORDER_NUMBER))
+                .thenReturn(Optional.of(order));
+        when(purchaseOrderRepository.findByProviderTransactionId(IMP_UID))
+                .thenReturn(Optional.of(order));
+
+        server.expect(once(), requestTo("https://api.iamport.kr/users/getToken"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(
+                        """
+                        {"code":0,"response":{"access_token":"portone-access-token"}}
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+        server.expect(once(), requestTo("https://api.iamport.kr/payments/" + IMP_UID))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        """
+                        {
+                          "code":0,
+                          "response":{
+                            "imp_uid":"imp_test_123456",
+                            "merchant_uid":"FF-20260803-CA7434",
+                            "amount":57800,
+                            "status":"paid"
+                          }
+                        }
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
+        OrderResponse result = paymentService.completePortOneByCallback(
+                IMP_UID,
+                ORDER_NUMBER,
+                CALLBACK_TOKEN
+        );
+
+        assertThat(result.status()).isEqualTo(OrderStatus.PAID);
+        assertThat(result.paymentStatus()).isEqualTo(PaymentStatus.DONE);
+        assertThat(order.getProviderTransactionId()).isEqualTo(IMP_UID);
         server.verify();
     }
 }
