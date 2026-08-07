@@ -105,7 +105,7 @@ public class MemberController {
         passwordRecoveryService.issueCode(request);
         return Map.of(
                 "message",
-                "회원정보가 일치하면 인증번호를 발송했습니다. 개발 환경에서는 STS Console을 확인해주세요."
+                "회원정보가 일치하면 등록 휴대전화로 인증번호를 발송했습니다. 개발 환경에서는 STS Console에도 표시됩니다."
         );
     }
 

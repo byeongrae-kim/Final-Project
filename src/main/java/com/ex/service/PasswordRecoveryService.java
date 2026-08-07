@@ -57,7 +57,7 @@ public class PasswordRecoveryService {
         secureRandom.nextBytes(salt);
         recoveryCodeSender.send(
                 username,
-                maskEmail(request.email()),
+                request.phone().trim(),
                 code
         );
         challenges.put(
@@ -131,18 +131,6 @@ public class PasswordRecoveryService {
 
     private String normalizeUsername(String username) {
         return username == null ? "" : username.trim().toLowerCase();
-    }
-
-    private String maskEmail(String email) {
-        if (email == null || !email.contains("@")) {
-            return "등록된 수신처";
-        }
-        String[] parts = email.trim().split("@", 2);
-        String local = parts[0];
-        String masked = local.length() <= 2
-                ? local.charAt(0) + "*"
-                : local.substring(0, 2) + "***";
-        return masked + '@' + parts[1];
     }
 
     private record Challenge(

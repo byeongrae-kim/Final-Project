@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -77,6 +78,13 @@ class AdminProductControllerTest {
                 .andExpect(status().isNoContent());
 
         assertFalse(productRepository.findById(productId).orElseThrow().isActive());
+
+        mockMvc.perform(get("/api/admin/activities")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].actionType", hasItem("PRODUCT_CREATED")))
+                .andExpect(jsonPath("$[*].actionType", hasItem("PRODUCT_UPDATED")))
+                .andExpect(jsonPath("$[*].actionType", hasItem("PRODUCT_DEACTIVATED")));
     }
 
     private String basicAuth() {

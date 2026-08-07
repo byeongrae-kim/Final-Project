@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.util.Base64;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -70,6 +71,13 @@ class AdminOperationsControllerTest {
                 .discountAmount(0)
                 .totalAmount(55_000)
                 .build());
+
+        mockMvc.perform(get("/api/admin/dashboard")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalOrders", greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.totalRevenue", greaterThanOrEqualTo(55_000)))
+                .andExpect(jsonPath("$.dailySales.length()").value(7));
 
         mockMvc.perform(get("/api/admin/orders"))
                 .andExpect(status().isUnauthorized());
@@ -123,6 +131,12 @@ class AdminOperationsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DELIVERED"))
                 .andExpect(jsonPath("$.deliveredAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/admin/activities")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].actionType", hasItem("ORDER_STATUS_CHANGED")))
+                .andExpect(jsonPath("$[*].targetIdentifier", hasItem(orderNumber)));
     }
 
     @Test

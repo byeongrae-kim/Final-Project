@@ -22,6 +22,8 @@
         products: [],
         orders: [],
         alerts: [],
+        dashboard: null,
+        activities: [],
         editingId: null,
         query: "",
         animal: "ALL",
@@ -58,6 +60,13 @@
         PAID: ["PREPARING", "상품 준비 시작"],
         PREPARING: ["SHIPPING", "배송 시작"],
         SHIPPING: ["DELIVERED", "배송 완료 처리"]
+    };
+
+    const activityLabels = {
+        PRODUCT_CREATED: "상품 등록",
+        PRODUCT_UPDATED: "상품 수정",
+        PRODUCT_DEACTIVATED: "판매 중지",
+        ORDER_STATUS_CHANGED: "주문 상태 변경"
     };
 
     function escapeHtml(value) {
@@ -130,6 +139,83 @@
         return response.json();
     }
 
+    async function loadDashboard() {
+        try {
+            state.dashboard = await adminFetch("/api/admin/dashboard");
+            renderDashboard();
+        } catch (error) {
+            document.querySelector("#admin-sales-chart").innerHTML =
+                `<p>${escapeHtml(error.message)}</p>`;
+            showToast(error.message, true);
+            throw error;
+        }
+    }
+
+    function renderDashboard() {
+        const dashboard = state.dashboard;
+        if (!dashboard) {
+            return;
+        }
+
+        document.querySelector("#metric-total-revenue").textContent = number(dashboard.totalRevenue);
+        document.querySelector("#metric-today-revenue").textContent = number(dashboard.todayRevenue);
+        document.querySelector("#metric-total-orders").textContent = number(dashboard.totalOrders);
+        document.querySelector("#metric-today-orders").textContent = number(dashboard.todayOrders);
+        document.querySelector("#metric-paid-orders").textContent = number(dashboard.paymentCompletedOrders);
+        document.querySelector("#metric-shipping-orders").textContent = number(dashboard.shippingOrders);
+        document.querySelector("#metric-low").textContent = number(dashboard.lowStockLots);
+        document.querySelector("#metric-expiry").textContent = number(dashboard.expiringLots);
+        document.querySelector("#summary-products").textContent = `${number(dashboard.totalProducts)}개`;
+        document.querySelector("#summary-soldout").textContent = `${number(dashboard.soldOutProducts)}개`;
+        document.querySelector("#summary-cancelled").textContent = `${number(dashboard.cancelledOrders)}건`;
+        document.querySelector("#summary-alerts").textContent =
+            `${number(dashboard.lowStockLots + dashboard.expiringLots)}건`;
+
+        const points = dashboard.dailySales || [];
+        const maximum = Math.max(1, ...points.map((point) => Number(point.revenue || 0)));
+        document.querySelector("#admin-sales-chart").innerHTML = points.map((point) => {
+            const date = new Date(`${point.date}T00:00:00`);
+            const height = Math.max(8, Math.round((Number(point.revenue || 0) / maximum) * 150));
+            return `<article title="${number(point.revenue)}원 · ${number(point.orderCount)}건">
+                <strong>${number(point.revenue)}원</strong>
+                <div class="sales-bar-track"><span style="height:${height}px"></span></div>
+                <small>${date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}</small>
+                <em>${number(point.orderCount)}건</em>
+            </article>`;
+        }).join("");
+    }
+
+    async function loadActivities() {
+        const activityTable = document.querySelector("#admin-activity-table");
+        activityTable.innerHTML = "<tr><td colspan=\"6\">활동 이력을 불러오는 중입니다.</td></tr>";
+        try {
+            state.activities = await adminFetch("/api/admin/activities");
+            renderActivities();
+        } catch (error) {
+            activityTable.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+            showToast(error.message, true);
+            throw error;
+        }
+    }
+
+    function renderActivities() {
+        const activityTable = document.querySelector("#admin-activity-table");
+        document.querySelector("#admin-activity-count").textContent = number(state.activities.length);
+        if (!state.activities.length) {
+            activityTable.innerHTML = "<tr><td colspan=\"6\">아직 기록된 관리자 변경 작업이 없습니다.</td></tr>";
+            return;
+        }
+
+        activityTable.innerHTML = state.activities.map((activity) => `<tr>
+            <td><strong>${new Date(activity.createdAt).toLocaleString("ko-KR")}</strong></td>
+            <td>${escapeHtml(activity.adminUsername)}</td>
+            <td><span class="admin-activity-badge">${escapeHtml(activityLabels[activity.actionType] || activity.actionType)}</span></td>
+            <td><strong>${escapeHtml(activity.targetType)}</strong><small>${escapeHtml(activity.targetIdentifier)}</small></td>
+            <td>${escapeHtml(activity.description)}</td>
+            <td>${escapeHtml(activity.ipAddress || "-")}</td>
+        </tr>`).join("");
+    }
+
     async function loadProducts() {
         table.innerHTML = "<tr><td colspan=\"7\">상품을 불러오는 중입니다.</td></tr>";
 
@@ -148,8 +234,6 @@
 
     function renderProducts() {
         productCount.textContent = state.products.length;
-        document.querySelector("#metric-total").textContent = number(state.products.length);
-        document.querySelector("#metric-soldout").textContent = number(state.products.filter((product) => product.stock < 1).length);
 
         const query = state.query.toLowerCase();
         const products = state.products.filter((product) => {
@@ -219,12 +303,6 @@
         });
 
         document.querySelector("#admin-order-count").textContent = number(state.orders.length);
-        const today = new Date().toDateString();
-        document.querySelector("#metric-today-orders").textContent = number(
-            state.orders.filter((order) => order.orderedAt
-                && new Date(order.orderedAt).toDateString() === today).length
-        );
-
         if (!orders.length) {
             orderTable.innerHTML = "<tr><td colspan=\"6\">조건에 맞는 주문이 없습니다.</td></tr>";
             return;
@@ -279,7 +357,7 @@
                 }
             );
             showToast(`${orderStatusLabels[status]} 상태로 변경했습니다.`);
-            await loadOrders();
+            await Promise.all([loadOrders(), loadDashboard(), loadActivities()]);
         } catch (error) {
             button.disabled = false;
             showToast(error.message, true);
@@ -302,13 +380,6 @@
     function renderInventoryAlerts() {
         const alertTable = document.querySelector("#admin-alert-table");
         document.querySelector("#admin-alert-count").textContent = number(state.alerts.length);
-        document.querySelector("#metric-expiry").textContent = number(
-            state.alerts.filter((alert) => alert.expired || alert.expiringSoon).length
-        );
-        document.querySelector("#metric-low").textContent = number(
-            state.alerts.filter((alert) => alert.lowStock).length
-        );
-
         if (!state.alerts.length) {
             alertTable.innerHTML = "<tr><td colspan=\"7\">현재 재고·유통기한 경고가 없습니다.</td></tr>";
             return;
@@ -347,8 +418,13 @@
     async function loadAdminData() {
         try {
             basicAuthorization();
-            await Promise.all([loadOrders(), loadInventoryAlerts()]);
-            message.textContent = "관리자 인증이 완료되었습니다. 주문과 LOT 경고를 불러왔습니다.";
+            await Promise.all([
+                loadOrders(),
+                loadInventoryAlerts(),
+                loadDashboard(),
+                loadActivities()
+            ]);
+            message.textContent = "관리자 인증이 완료되었습니다. 통계·주문·LOT·활동 이력을 불러왔습니다.";
         } catch (error) {
             message.textContent = error.message;
         }
@@ -483,7 +559,7 @@
             showToast(editing ? "상품 정보가 수정되었습니다." : "새 상품이 등록되었습니다.");
             message.textContent = "관리자 인증과 H2 저장이 정상 작동했습니다.";
             resetForm();
-            await loadProducts();
+            await Promise.all([loadProducts(), loadDashboard(), loadActivities()]);
         } catch (error) {
             showToast(error.message, true);
             message.textContent = error.message;
@@ -519,7 +595,7 @@
             if (state.editingId === productId) {
                 resetForm();
             }
-            await loadProducts();
+            await Promise.all([loadProducts(), loadDashboard(), loadActivities()]);
         } catch (error) {
             showToast(error.message, true);
         }
@@ -557,6 +633,8 @@
     document.querySelector("#admin-auth-load").addEventListener("click", loadAdminData);
     document.querySelector("#admin-order-refresh").addEventListener("click", loadOrders);
     document.querySelector("#admin-alert-refresh").addEventListener("click", loadInventoryAlerts);
+    document.querySelector("#admin-dashboard-refresh").addEventListener("click", loadDashboard);
+    document.querySelector("#admin-activity-refresh").addEventListener("click", loadActivities);
     document.querySelector("#admin-order-search").addEventListener("input", (event) => {
         state.orderQuery = event.target.value.trim();
         renderOrders();
