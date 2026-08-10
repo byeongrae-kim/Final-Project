@@ -19,11 +19,23 @@ public class PageController {
     @GetMapping("/")
     public String home(Model model) {
         model.addAttribute("siteName", "FEED FLOW");
+        model.addAttribute("saleZonePage", false);
         model.addAttribute(
                 "products",
                 productCatalogService.findProducts(null, null)
         );
 
+        return "index";
+    }
+
+    @GetMapping("/sale-zone")
+    public String saleZone(Model model) {
+        model.addAttribute("siteName", "FEED FLOW SALE ZONE");
+        model.addAttribute("saleZonePage", true);
+        model.addAttribute(
+                "products",
+                productCatalogService.findSaleZoneProducts(null, null)
+        );
         return "index";
     }
 

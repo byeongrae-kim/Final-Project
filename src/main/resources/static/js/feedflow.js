@@ -19,6 +19,7 @@
 
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+    const isSaleZonePage = document.body.dataset.saleZone === "true";
 
     const won = (value) =>
         `${Number(value || 0).toLocaleString("ko-KR")}원`;
@@ -494,6 +495,48 @@
         return Math.ceil((target - today) / 86400000);
     }
 
+    function firstAvailableLot(product) {
+        return Array.isArray(product.lots) && product.lots.length
+            ? product.lots[0]
+            : null;
+    }
+
+    function currentUnitPrice(product) {
+        return Number(
+            firstAvailableLot(product)?.effectiveUnitPrice
+            ?? product.price
+            ?? 0
+        );
+    }
+
+    /* FEFO 순서대로 LOT을 배정했을 때의 자동 할인 금액을 계산합니다. */
+    function productPricing(product, quantity) {
+        const baseUnitPrice = Number(product.price || 0);
+        const grossAmount = baseUnitPrice * quantity;
+        let remaining = quantity;
+        let payableAmount = 0;
+
+        (Array.isArray(product.lots) ? product.lots : []).forEach((lot) => {
+            if (remaining <= 0) {
+                return;
+            }
+            const allocation = Math.min(Number(lot.quantity || 0), remaining);
+            payableAmount += allocation * Number(
+                lot.effectiveUnitPrice ?? baseUnitPrice
+            );
+            remaining -= allocation;
+        });
+
+        // 새 재고 동기화 직전의 일시적인 차이에도 금액 계산이 깨지지 않게 합니다.
+        payableAmount += Math.max(remaining, 0) * baseUnitPrice;
+
+        return {
+            grossAmount,
+            discountAmount: Math.max(0, grossAmount - payableAmount),
+            payableAmount
+        };
+    }
+
     function bagMarkup(product, extraClass = "") {
         const imageUrl = escapeHtml(
             product.imageUrl || "/images/feed-bag-warehouse.png"
@@ -535,6 +578,9 @@
         const normalized = state.query.trim().toLowerCase();
 
         const result = state.products.filter((product) => {
+            const saleZoneMatch = !isSaleZonePage
+                || (Array.isArray(product.lots)
+                    && product.lots.some((lot) => lot.saleZone));
             const categoryMatch =
                 state.category === "ALL"
                 || (
@@ -562,7 +608,8 @@
                 ${product.description}
             `.toLowerCase();
 
-            return categoryMatch
+            return saleZoneMatch
+                && categoryMatch
                 && (!normalized || haystack.includes(normalized));
         });
 
@@ -603,6 +650,9 @@
         grid.innerHTML = products.map((product) => {
             const favorite = state.favorites.has(product.id);
             const stock = stockInfo(product);
+            const firstLot = firstAvailableLot(product);
+            const automaticDiscount = Number(firstLot?.discountRate || 0);
+            const unitPrice = currentUnitPrice(product);
 
             return `
                 <article
@@ -617,7 +667,9 @@
                         aria-label="${escapeHtml(product.name)} 상세보기"
                     >
                         ${
-                            product.badge
+                            isSaleZonePage && automaticDiscount > 0
+                                ? `<span class="badge sale-zone-badge">SALE ${automaticDiscount}% · D-${Number(firstLot.daysRemaining)}</span>`
+                                : product.badge
                                 ? `<span class="badge">${escapeHtml(product.badge)}</span>`
                                 : ""
                         }
@@ -655,14 +707,23 @@
                             <strong>${stock.label}</strong>
                         </div>
 
+                        ${automaticDiscount > 0 ? `
+                            <div class="sale-lot-line">
+                                <span>D-${Number(firstLot.daysRemaining)} · ${escapeHtml(firstLot.expirationDate)}까지</span>
+                                <strong>${escapeHtml(firstLot.treatment)}</strong>
+                            </div>
+                        ` : ""}
+
                         <div class="product-price">
                             ${
-                                product.originalPrice
+                                automaticDiscount > 0
+                                    ? `<del>${won(product.price)}</del>`
+                                    : product.originalPrice
                                     ? `<del>${won(product.originalPrice)}</del>`
                                     : ""
                             }
 
-                            <strong>${won(product.price)}</strong>
+                            <strong>${won(unitPrice)}</strong>
                         </div>
 
                         <div class="card-actions">
@@ -695,6 +756,7 @@
 
     async function loadProducts() {
         try {
+            // 전체 상품을 유지해 SALE ZONE으로 이동해도 기존 장바구니가 사라지지 않게 합니다.
             state.products = await api("/api/products");
 
             renderProducts();
@@ -751,6 +813,9 @@
         const lots = Array.isArray(product.lots)
             ? product.lots
             : [];
+        const firstLot = firstAvailableLot(product);
+        const automaticDiscount = Number(firstLot?.discountRate || 0);
+        const unitPrice = currentUnitPrice(product);
 
         const content = $("#product-modal-content");
 
@@ -817,14 +882,16 @@
                     </div>
 
                     <div class="detail-price">
-                        ${won(product.price)}
+                        ${automaticDiscount > 0 ? `<del>${won(product.price)}</del>` : ""}
+                        ${won(unitPrice)}
 
                         <small>
+                            ${automaticDiscount > 0 ? `자동 ${automaticDiscount}% 할인` : ""}
                             · ${escapeHtml(product.weight)}kg / 포
                             ·
                             ${won(
                                 Math.round(
-                                    product.price
+                                    unitPrice
                                     / Number(product.weight || 1)
                                 )
                             )}/kg
@@ -905,6 +972,8 @@
                                             <th>유통기한</th>
                                             <th>D-day</th>
                                             <th>잔여 수량</th>
+                                            <th>할인율</th>
+                                            <th>LOT 판매가</th>
                                             <th>상태</th>
                                         </tr>
                                     </thead>
@@ -939,7 +1008,15 @@
                                                 </td>
 
                                                 <td>
-                                                    ${escapeHtml(lot.status)}
+                                                    ${Number(lot.discountRate) > 0 ? `${Number(lot.discountRate)}%` : "정상가"}
+                                                </td>
+
+                                                <td>
+                                                    ${won(lot.effectiveUnitPrice)}
+                                                </td>
+
+                                                <td>
+                                                    ${escapeHtml(lot.treatment || lot.status)}
                                                 </td>
                                             </tr>
                                         `).join("")}
@@ -990,21 +1067,28 @@
     }
 
     function cartAmounts() {
-        const productAmount = cartRows().reduce(
-            (sum, item) =>
-                sum + item.product.price * item.quantity,
-            0
-        );
+        const pricing = cartRows().reduce((amounts, item) => {
+            const line = productPricing(item.product, item.quantity);
+            amounts.productAmount += line.grossAmount;
+            amounts.discountAmount += line.discountAmount;
+            amounts.payableProductAmount += line.payableAmount;
+            return amounts;
+        }, {
+            productAmount: 0,
+            discountAmount: 0,
+            payableProductAmount: 0
+        });
 
         const deliveryFee =
-            productAmount === 0 || productAmount >= 150000
+            pricing.payableProductAmount === 0
+                || pricing.payableProductAmount >= 150000
                 ? 0
                 : 5000;
 
         return {
-            productAmount,
+            ...pricing,
             deliveryFee,
-            total: productAmount + deliveryFee
+            total: pricing.payableProductAmount + deliveryFee
         };
     }
 
@@ -1037,14 +1121,18 @@
         }
 
         cartItems.innerHTML = rows.length
-            ? rows.map(({ product, quantity }) => `
+            ? rows.map(({ product, quantity }) => {
+                const pricing = productPricing(product, quantity);
+                return `
                 <div class="cart-item">
 
                     <div>
                         <strong>${escapeHtml(product.name)}</strong>
 
                         <small>
-                            ${won(product.price)}
+                            ${pricing.discountAmount > 0
+                                ? `${won(pricing.payableAmount)} (자동 할인 ${won(pricing.discountAmount)})`
+                                : won(pricing.payableAmount)}
                             · ${product.weight}kg
                             × ${quantity}포
                             =
@@ -1084,7 +1172,8 @@
                         ×
                     </button>
                 </div>
-            `).join("")
+            `;
+            }).join("")
             : `
                 <div class="empty-state">
                     장바구니가 비어 있습니다.
@@ -1113,6 +1202,13 @@
                 <span>상품 금액</span>
                 <strong>${won(amounts.productAmount)}</strong>
             </div>
+
+            ${amounts.discountAmount > 0 ? `
+                <div class="summary-line sale-discount-summary">
+                    <span>유통기한 자동 할인</span>
+                    <strong>-${won(amounts.discountAmount)}</strong>
+                </div>
+            ` : ""}
 
             <div class="summary-line">
                 <span>배송비</span>
@@ -1461,19 +1557,34 @@
 
         if (invoiceBody) {
             invoiceBody.innerHTML = rows.map(
-                ({ product, quantity }) => `
+                ({ product, quantity }) => {
+                    const pricing = productPricing(product, quantity);
+                    const averageUnitPrice = Math.floor(
+                        pricing.payableAmount / quantity
+                    );
+                    return `
                     <tr>
                         <td>${escapeHtml(product.name)}</td>
                         <td>${quantity}</td>
-                        <td>${won(product.price)}</td>
-                        <td><strong>${won(product.price * quantity)}</strong></td>
+                        <td>
+                            ${pricing.discountAmount > 0
+                                ? `<del>${won(product.price)}</del><br>${won(averageUnitPrice)}`
+                                : won(product.price)}
+                        </td>
+                        <td>
+                            ${pricing.discountAmount > 0
+                                ? `<del>${won(pricing.grossAmount)}</del><br>`
+                                : ""}
+                            <strong>${won(pricing.payableAmount)}</strong>
+                        </td>
                     </tr>
-                `
+                `;
+                }
             ).join("");
         }
 
         if (invoiceTotal) {
-            invoiceTotal.textContent = won(amounts.productAmount);
+            invoiceTotal.textContent = won(amounts.payableProductAmount);
         }
 
         checkoutSummary.innerHTML = `
@@ -1483,6 +1594,13 @@
                 <span>상품 금액</span>
                 <strong>${won(amounts.productAmount)}</strong>
             </div>
+
+            ${amounts.discountAmount > 0 ? `
+                <div class="summary-line sale-discount-summary">
+                    <span>유통기한 자동 할인</span>
+                    <strong>-${won(amounts.discountAmount)}</strong>
+                </div>
+            ` : ""}
 
             <div class="summary-line">
                 <span>배송비</span>
@@ -1643,18 +1761,6 @@
                     )
                 );
             }
-        }
-
-        if (button.hasAttribute("data-scroll-consulting")) {
-            $("#consulting")?.scrollIntoView({
-                behavior: "smooth"
-            });
-        }
-
-        if (button.hasAttribute("data-consult")) {
-            showToast(
-                "상담 신청이 접수되었습니다. 평일 중 연락드리겠습니다."
-            );
         }
 
         if (button.dataset.footerMessage) {

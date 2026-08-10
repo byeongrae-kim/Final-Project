@@ -27,7 +27,7 @@
     >
 </head>
 
-<body>
+<body th:attr="data-sale-zone=${saleZonePage == true}">
 
 <div
     id="toast"
@@ -44,7 +44,9 @@
      ====================================================== -->
 <div class="notice">
 
-    <span>
+    <span th:text="${saleZonePage == true
+        ? 'SALE ZONE · 남은 기간과 과잉 재고 기준 자동 할인'
+        : '농가 맞춤 배합사료 · LOT별 재고 및 유통기한 확인 · 안전한 농장 배송'}">
         농가 맞춤 배합사료 · LOT별 재고 및 유통기한 확인 · 안전한 농장 배송
     </span>
 
@@ -162,9 +164,18 @@
         class="category-nav"
         aria-label="상품 분류"
     >
+        <a
+            class="sale-zone-link"
+            th:classappend="${saleZonePage == true} ? ' active' : ''"
+            th:href="@{/sale-zone}"
+            href="/sale-zone"
+        >
+            SALE ZONE
+        </a>
+
         <button
             type="button"
-            class="active"
+            th:classappend="${saleZonePage != true} ? 'active' : ''"
             data-category="ALL"
         >
             전체
@@ -205,16 +216,79 @@
             영양제
         </button>
 
-        <a href="#consulting">사료 상담</a>
     </nav>
 </header>
 
 <main>
 
+    <!-- 남은 기간과 과잉 재고 기준을 충족한 LOT만 자동 노출되는 전용 영역 -->
+    <section
+        class="sale-zone-hero"
+        th:if="${saleZonePage == true}"
+    >
+        <div>
+            <p>EXPIRY SMART DEAL</p>
+            <h1>SALE<br>ZONE</h1>
+            <strong>남은 유통기한은 짧게, LOT 정보는 더 투명하게.</strong>
+            <span>
+                남은 일수에 따라 10~40%를 자동 적용하고, 재고가 있는 LOT만
+                서버가 선별합니다. 3일 이하는 주문할 수 없습니다.
+            </span>
+            <a href="#products">SALE 상품 확인하기 →</a>
+        </div>
+
+        <aside>
+            <span>AUTO SELECT</span>
+            <strong>매일 자동 갱신</strong>
+            <p>페이지를 열 때마다 현재 날짜와 LOT 유통기한을 다시 비교합니다.</p>
+            <ul>
+                <li>판매 재고 1포 이상</li>
+                <li>유통기한이 지나지 않은 LOT</li>
+                <li>4~29일 또는 30~45일 과잉 재고</li>
+                <li>남은 일수별 10~40% 자동 할인</li>
+                <li>3일 이하는 판매 중지</li>
+            </ul>
+        </aside>
+    </section>
+
+    <section
+        class="sale-zone-policy"
+        th:if="${saleZonePage == true}"
+        aria-labelledby="sale-zone-policy-title"
+    >
+        <div class="sale-zone-policy-heading">
+            <div>
+                <p>SALE POLICY</p>
+                <h2 id="sale-zone-policy-title">남은 기간별 자동 할인 기준</h2>
+            </div>
+            <span>LOT 유통기한과 재고를 기준으로 매일 자동 계산됩니다. 과잉 재고 기준은 LOT 50포 이상입니다.</span>
+        </div>
+
+        <div class="sale-zone-policy-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>남은 기간</th>
+                        <th>할인율</th>
+                        <th>처리 기준</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>46일 이상</td><td>정상가</td><td>일반 판매</td></tr>
+                    <tr><td>30~45일</td><td><strong>10%</strong></td><td>LOT 재고 50포 이상일 때 할인</td></tr>
+                    <tr><td>15~29일</td><td><strong>20%</strong></td><td>임박 특가</td></tr>
+                    <tr><td>8~14일</td><td><strong>30%</strong></td><td>빠른 배송 지역 중심 판매</td></tr>
+                    <tr><td>4~7일</td><td><strong>40%</strong></td><td>당일·익일 배송만 허용</td></tr>
+                    <tr class="sale-stop-row"><td>3일 이하</td><td>판매 중지</td><td>폐기·반품 검토</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <!-- ==================================================
          [수정] 메인 Hero 전체 영역
          ================================================== -->
-    <section class="hero">
+    <section class="hero" th:unless="${saleZonePage == true}">
 
         <!-- Hero 왼쪽 소개 영역 -->
         <div class="hero-copy">
@@ -245,13 +319,6 @@
                     <span>→</span>
                 </a>
 
-                <button
-                    type="button"
-                    class="link-button"
-                    data-scroll-consulting
-                >
-                    전문가에게 상담받기
-                </button>
             </div>
 
             <div class="hero-stats">
@@ -356,6 +423,7 @@
     <section
         class="benefits"
         aria-label="구매 안내"
+        th:unless="${saleZonePage == true}"
     >
         <article>
             <span>01</span>
@@ -398,13 +466,23 @@
             <div>
                 <p class="eyebrow dark">
                     <span></span>
-                    FARMER'S CHOICE
+                    <th:block th:text="${saleZonePage == true ? 'EXPIRY SMART DEAL' : 'FARMER''S CHOICE'}">
+                        FARMER'S CHOICE
+                    </th:block>
                 </p>
 
-                <h2>지금 농가에서 많이 찾는 사료</h2>
+                <h2 th:text="${saleZonePage == true
+                    ? '유통기한 임박 자동 할인 상품'
+                    : '지금 농가에서 많이 찾는 사료'}">
+                    지금 농가에서 많이 찾는 사료
+                </h2>
 
                 <p>
-                    축종과 성장 단계에 맞춰 엄선한 대표 배합사료입니다.
+                    <th:block th:text="${saleZonePage == true
+                        ? '남은 일수와 LOT 재고 조건을 충족한 상품만 자동 노출됩니다.'
+                        : '축종과 성장 단계에 맞춰 엄선한 대표 배합사료입니다.'}">
+                        축종과 성장 단계에 맞춰 엄선한 대표 배합사료입니다.
+                    </th:block>
                     <strong id="product-result-count"></strong>
                 </p>
             </div>
@@ -439,8 +517,16 @@
                 <div class="product-visual">
 
                     <span
+                        class="badge sale-zone-badge"
+                        th:if="${saleZonePage == true}"
+                        th:text="${'SALE · D-' + product.lots[0].daysRemaining}"
+                    >
+                        SALE
+                    </span>
+
+                    <span
                         class="badge"
-                        th:if="${product.badge != null}"
+                        th:if="${saleZonePage != true and product.badge != null}"
                         th:text="${product.badge}"
                     >
                         추천
@@ -528,48 +614,14 @@
             id="empty-products"
             class="empty-state"
             hidden
+            th:text="${saleZonePage == true
+                ? '현재 SALE ZONE 자동 할인 조건을 충족한 상품이 없습니다.'
+                : '조건에 맞는 상품이 없습니다.'}"
         >
             조건에 맞는 상품이 없습니다.
         </div>
     </section>
 
-    <!-- ==================================================
-         사료 상담
-         ================================================== -->
-    <section
-        id="consulting"
-        class="consulting"
-    >
-
-        <div>
-            <p class="eyebrow">
-                <span></span>
-                FARM CONSULTING
-            </p>
-
-            <h2>
-                우리 농장에 꼭 맞는 사료,<br>
-                전문가와 함께 찾아보세요.
-            </h2>
-        </div>
-
-        <div class="consulting-contact">
-            <span>☎</span>
-
-            <div>
-                <small>사료 전문 상담</small>
-                <strong>1588-0427</strong>
-                <p>평일 08:30 – 17:30</p>
-            </div>
-
-            <button
-                type="button"
-                data-consult
-            >
-                상담 신청
-            </button>
-        </div>
-    </section>
 </main>
 
 <!-- ======================================================

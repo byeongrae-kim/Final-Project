@@ -888,6 +888,169 @@ footer { padding: 45px max(30px, calc((100vw - 1180px) / 2)); background: #0d281
 }
 
 /* =========================================================
+   SALE ZONE
+   남은 유통기한 4~45일 LOT을 일수별로 자동 할인합니다.
+   ========================================================= */
+.category-nav .sale-zone-link {
+    margin-left: 0;
+    padding: 8px 12px;
+    border: 1px solid #c45132;
+    color: #b84227;
+    letter-spacing: .06em;
+}
+
+.category-nav .sale-zone-link:hover,
+.category-nav .sale-zone-link.active {
+    background: #c45132;
+    color: white;
+}
+
+.sale-zone-hero {
+    min-height: 420px;
+    padding: 65px max(30px, calc((100vw - 1180px) / 2));
+    display: grid;
+    grid-template-columns: 1.25fr .75fr;
+    align-items: center;
+    gap: 60px;
+    background:
+        radial-gradient(circle at 78% 25%, rgba(255,255,255,.12), transparent 28%),
+        linear-gradient(135deg, #7e241b 0%, #c45132 54%, #e6904e 100%);
+    color: white;
+}
+
+.sale-zone-hero > div > p,
+.sale-zone-policy-heading p {
+    margin: 0 0 12px;
+    color: #ffe5a8;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .2em;
+}
+
+.sale-zone-hero h1 {
+    margin: 0;
+    font: 900 76px/0.84 Georgia, serif;
+    letter-spacing: -.04em;
+}
+
+.sale-zone-hero > div > strong,
+.sale-zone-hero > div > span {
+    display: block;
+}
+
+.sale-zone-hero > div > strong {
+    margin-top: 26px;
+    font-size: 22px;
+}
+
+.sale-zone-hero > div > span {
+    max-width: 620px;
+    margin-top: 12px;
+    color: rgba(255,255,255,.8);
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.sale-zone-hero > div > a {
+    min-height: 48px;
+    margin-top: 24px;
+    padding: 0 22px;
+    display: inline-flex;
+    align-items: center;
+    background: white;
+    color: #8c2e21;
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.sale-zone-hero aside {
+    padding: 30px;
+    border: 1px solid rgba(255,255,255,.28);
+    background: rgba(64,12,8,.28);
+    backdrop-filter: blur(8px);
+}
+
+.sale-zone-hero aside > span {
+    color: #ffe5a8;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .15em;
+}
+
+.sale-zone-hero aside > strong {
+    display: block;
+    margin: 10px 0;
+    font-size: 25px;
+}
+
+.sale-zone-hero aside p,
+.sale-zone-hero aside li {
+    color: rgba(255,255,255,.78);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.sale-zone-hero aside ul {
+    margin: 20px 0 0;
+    padding-left: 18px;
+}
+
+.sale-zone-policy {
+    max-width: 1180px;
+    margin: 50px auto 0;
+    padding: 34px;
+    border: 1px solid var(--line);
+    background: white;
+}
+
+.sale-zone-policy-heading {
+    margin-bottom: 22px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.sale-zone-policy-heading p { color: #b84227; }
+.sale-zone-policy-heading h2 { margin: 0; font-size: 27px; }
+.sale-zone-policy-heading > span { color: var(--muted); font-size: 13px; }
+.sale-zone-policy-table-wrap { overflow-x: auto; }
+.sale-zone-policy table { width: 100%; border-collapse: collapse; }
+.sale-zone-policy th,
+.sale-zone-policy td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; }
+.sale-zone-policy th { background: #f3eee6; font-size: 13px; }
+.sale-zone-policy td { font-size: 14px; }
+.sale-zone-policy td strong { color: #c45132; }
+.sale-zone-policy .sale-stop-row { color: #9a3029; background: #fff0ed; font-weight: 800; }
+
+.sale-zone-badge { background: #c45132; }
+.sale-lot-line {
+    margin: -3px 0 12px;
+    padding: 9px 10px;
+    display: grid;
+    gap: 4px;
+    background: #fff0e7;
+    color: #8f3825;
+    font-size: 11px;
+}
+.sale-lot-line strong { font-size: 12px; }
+.sale-discount-summary { color: #b84227; }
+.detail-price del { margin-right: 8px; color: #999; font-size: 15px; font-weight: 400; }
+
+@media (max-width: 900px) {
+    .sale-zone-hero { grid-template-columns: 1fr; gap: 30px; }
+    .sale-zone-policy { margin-right: 24px; margin-left: 24px; }
+}
+
+@media (max-width: 600px) {
+    .sale-zone-hero { padding: 45px 22px; }
+    .sale-zone-hero h1 { font-size: 58px; }
+    .sale-zone-hero > div > strong { font-size: 18px; }
+    .sale-zone-policy { margin: 28px 16px 0; padding: 20px 14px; }
+    .sale-zone-policy-heading { align-items: flex-start; flex-direction: column; }
+}
+
+/* =========================================================
    Kakao 주소 검색 입력창
    ========================================================= */
 .address-search-row {

@@ -82,7 +82,9 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.status").value("PAYMENT_PENDING"))
                 .andExpect(jsonPath("$.paymentStatus").value("READY"))
                 .andExpect(jsonPath("$.paymentToken").isNotEmpty())
-                .andExpect(jsonPath("$.discountAmount").value(0))
+                .andExpect(jsonPath("$.discountAmount").value(
+                        product.getPrice() * 2 * 10 / 100
+                ))
                 .andExpect(jsonPath("$.orderNumber").exists())
                 .andReturn()
                 .getResponse()

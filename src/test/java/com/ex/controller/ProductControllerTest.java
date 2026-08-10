@@ -35,4 +35,16 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].animal").value("돼지"));
     }
+
+    @Test
+    void SaleZone은남은기간별할인Lot만조회한다() throws Exception {
+        mockMvc.perform(get("/api/products/sale-zone"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[0].lots[0].discountRate").value(10))
+                .andExpect(jsonPath("$[1].lots[0].discountRate").value(20))
+                .andExpect(jsonPath("$[2].lots[0].discountRate").value(30))
+                .andExpect(jsonPath("$[3].lots[0].discountRate").value(40))
+                .andExpect(jsonPath("$[0].lots[0].saleZone").value(true));
+    }
 }

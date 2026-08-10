@@ -23,6 +23,14 @@ public class ProductController {
         return productCatalogService.findProducts(animalType, query);
     }
 
+    @GetMapping("/sale-zone")
+    public List<ProductResponse> findSaleZoneProducts(
+            @RequestParam(name = "animalType", required = false) AnimalType animalType,
+            @RequestParam(name = "query", required = false) String query
+    ) {
+        return productCatalogService.findSaleZoneProducts(animalType, query);
+    }
+
     @GetMapping("/{productId}")
     public ProductResponse findProduct(
             @PathVariable(name = "productId") Long productId

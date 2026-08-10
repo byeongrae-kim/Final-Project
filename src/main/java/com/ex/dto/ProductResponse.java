@@ -2,12 +2,14 @@ package com.ex.dto;
 
 import com.ex.entity.Product;
 import com.ex.entity.ProductLot;
+import com.ex.service.SaleZonePolicy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 
 public record ProductResponse(
         Long id,
@@ -36,10 +38,22 @@ public record ProductResponse(
         List<LotResponse> lots
 ) {
     public static ProductResponse from(Product product) {
-        LocalDate today = LocalDate.now();
+        return from(product, lot -> true);
+    }
+
+    /**
+     * 특정 판매 구역에서 사용할 LOT 조건을 적용해 상품 재고를 계산합니다.
+     * SALE ZONE에서는 남은 일수와 과잉 재고 기준을 만족하는 LOT만 포함됩니다.
+     */
+    public static ProductResponse from(
+            Product product,
+            Predicate<ProductLot> lotFilter
+    ) {
         List<ProductLot> availableLots = product.getLots().stream()
                 .filter(lot -> lot.getQuantity() > 0)
-                .filter(lot -> !lot.getExpirationDate().isBefore(today))
+                // 남은 기간 3일 이하는 폐기·반품 검토 대상으로 판매하지 않습니다.
+                .filter(lot -> SaleZonePolicy.isSellable(lot.getExpirationDate()))
+                .filter(lotFilter)
                 .sorted(Comparator.comparing(ProductLot::getExpirationDate))
                 .toList();
 
@@ -75,7 +89,9 @@ public record ProductResponse(
                 product.getDisplayShape(),
                 product.getImageUrl(),
                 product.getManufacturer().getName(),
-                availableLots.stream().map(LotResponse::from).toList()
+                availableLots.stream()
+                        .map(lot -> LotResponse.from(lot, product.getPrice()))
+                        .toList()
         );
     }
 
@@ -85,18 +101,42 @@ public record ProductResponse(
             LocalDate expirationDate,
             int quantity,
             long daysRemaining,
-            String status
+            String status,
+            int discountRate,
+            int effectiveUnitPrice,
+            boolean saleZone,
+            String treatment
     ) {
-        static LotResponse from(ProductLot lot) {
+        static LotResponse from(ProductLot lot, int baseUnitPrice) {
             long daysRemaining = ChronoUnit.DAYS.between(LocalDate.now(), lot.getExpirationDate());
-            String status = daysRemaining <= 30 ? "유통기한 임박" : lot.getQuantity() <= 10 ? "재고 부족" : "판매 가능";
+            int discountRate = SaleZonePolicy.discountRate(
+                    lot.getExpirationDate(),
+                    lot.getQuantity()
+            );
+            String status = discountRate > 0
+                    ? "SALE " + discountRate + "%"
+                    : lot.getQuantity() <= 10 ? "재고 부족" : "판매 가능";
             return new LotResponse(
                     lot.getLotNumber(),
                     lot.getManufacturedDate(),
                     lot.getExpirationDate(),
                     lot.getQuantity(),
                     daysRemaining,
-                    status
+                    status,
+                    discountRate,
+                    SaleZonePolicy.effectiveUnitPrice(
+                            baseUnitPrice,
+                            lot.getExpirationDate(),
+                            lot.getQuantity()
+                    ),
+                    SaleZonePolicy.isSaleZone(
+                            lot.getExpirationDate(),
+                            lot.getQuantity()
+                    ),
+                    SaleZonePolicy.treatmentLabel(
+                            lot.getExpirationDate(),
+                            lot.getQuantity()
+                    )
             );
         }
     }

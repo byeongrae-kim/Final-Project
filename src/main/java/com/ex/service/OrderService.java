@@ -58,6 +58,7 @@ public class OrderService {
                 .build();
 
         int productAmount = 0;
+        int discountAmount = 0;
 
         for (CreateOrderRequest.OrderLineRequest line : request.items()) {
             Product product = productRepository.findById(line.productId())
@@ -74,16 +75,25 @@ public class OrderService {
                     .unitPrice(product.getPrice())
                     .lineAmount(lineAmount)
                     .build();
-            decreaseStock(product.getId(), line.quantity(), orderItem);
+            int lineDiscount = decreaseStock(
+                    product.getId(),
+                    product.getPrice(),
+                    line.quantity(),
+                    orderItem
+            );
+            discountAmount = Math.addExact(discountAmount, lineDiscount);
             order.addItem(orderItem);
         }
 
-        int deliveryFee = productAmount >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-        int totalAmount = productAmount + deliveryFee;
+        int discountedProductAmount = productAmount - discountAmount;
+        int deliveryFee = discountedProductAmount >= FREE_DELIVERY_THRESHOLD
+                ? 0
+                : DELIVERY_FEE;
+        int totalAmount = discountedProductAmount + deliveryFee;
 
         order.setProductAmount(productAmount);
         order.setDeliveryFee(deliveryFee);
-        order.setDiscountAmount(0);
+        order.setDiscountAmount(discountAmount);
         order.setTotalAmount(totalAmount);
 
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
@@ -147,12 +157,18 @@ public class OrderService {
         return OrderDetailResponse.from(order);
     }
 
-    private void decreaseStock(Long productId, int requestedQuantity, OrderItem orderItem) {
+    private int decreaseStock(
+            Long productId,
+            int baseUnitPrice,
+            int requestedQuantity,
+            OrderItem orderItem
+    ) {
         List<ProductLot> lots = productLotRepository
                 .findByProductIdAndQuantityGreaterThanAndExpirationDateGreaterThanEqualOrderByExpirationDateAsc(
                         productId,
                         0,
-                        LocalDate.now()
+                        // 3일 이하는 판매 중지 대상이므로 주문 재고에서 제외합니다.
+                        LocalDate.now().plusDays(4)
                 );
 
         int totalStock = lots.stream().mapToInt(ProductLot::getQuantity).sum();
@@ -161,18 +177,30 @@ public class OrderService {
         }
 
         int remaining = requestedQuantity;
+        int discountAmount = 0;
         for (ProductLot lot : lots) {
             if (remaining == 0) {
                 break;
             }
+            int lotQuantityBeforeOrder = lot.getQuantity();
             int deduction = Math.min(lot.getQuantity(), remaining);
             lot.decrease(deduction);
+            discountAmount = Math.addExact(
+                    discountAmount,
+                    SaleZonePolicy.discountAmount(
+                            baseUnitPrice,
+                            deduction,
+                            lot.getExpirationDate(),
+                            lotQuantityBeforeOrder
+                    )
+            );
             orderItem.addLotAllocation(OrderLotAllocation.builder()
                     .productLot(lot)
                     .quantity(deduction)
                     .build());
             remaining -= deduction;
         }
+        return discountAmount;
     }
 
     private String createOrderNumber() {
