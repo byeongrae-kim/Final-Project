@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>서비스 처리 오류 | FEED FLOW</title>
+    <link rel="icon" type="image/png" th:href="@{/images/feedflow-logo.png}" href="/images/feedflow-logo.png">
+    <link rel="stylesheet" th:href="@{/css/error.css}" href="/css/error.css">
+</head>
+<body>
+<main class="error-page">
+    <section class="error-card">
+        <a class="error-brand" href="/"><img th:src="@{/images/feedflow-logo.png}" src="/images/feedflow-logo.png" alt="FEED FLOW"></a>
+        <p class="error-code">ERROR 500</p>
+        <h1>요청을 처리하지<br>못했습니다.</h1>
+        <p class="error-description">일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요. 주문·결제 중 오류가 발생했다면 마이페이지에서 주문 상태를 먼저 확인해 주세요.</p>
+        <div class="error-actions"><a href="/">메인으로 돌아가기</a><a href="/mypage">주문 상태 확인</a></div>
+        <p class="error-reference">내부 오류 정보와 보안 정보는 화면에 표시하지 않습니다.</p>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+FEED FLOW 아이디 찾기 / 비밀번호 재설정 안내
+
+1. STS Import
+   File > Import > Gradle > Existing Gradle Project
+   ZIP을 푼 뒤 finalProject 폴더를 Project root directory로 선택합니다.
+
+2. 실행
+   finalProject 우클릭 > Run As > Spring Boot App
+   브라우저에서 http://localhost:8080/ 으로 접속합니다.
+
+3. 아이디 찾기
+   로그인 창 > 아이디 찾기
+   회원가입 때 입력한 성명과 이메일을 입력합니다.
+
+4. 비밀번호 찾기
+   로그인 창 > 비밀번호 찾기
+   아이디, 이메일, 휴대전화가 기존 회원정보와 일치하면
+   6자리 인증번호가 생성되고 STS Console에 출력됩니다.
+   실제 SMS 기능을 켠 경우 등록 휴대전화에도 같은 번호가 전송됩니다.
+   인증번호 확인 후 영문·숫자·특수문자를 포함한 8자 이상의
+   새 비밀번호로 변경할 수 있습니다.
+
+5. 관리자 계정
+   환경변수로 설정한 관리자 계정은 일반 회원의 아이디 찾기와
+   비밀번호 재설정 대상이 아닙니다.
+
+주의
+   기본 설정은 비용 없이 사용할 수 있는 STS Console 시연 방식입니다.
+   실제 문자 발송 설정은 SMS-AUTH-GUIDE-KO.txt를 확인하세요.
+   Naver Cloud access key와 secret key는 프로젝트 파일에 저장하지 않습니다.
