@@ -35,8 +35,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRequestHandler(csrfRequestHandler)
                         .ignoringRequestMatchers(
-                                "/api/**",
-                                "/h2-console/**"))
+                                "/api/**"))
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -57,8 +56,7 @@ public class SecurityConfig {
                         // 열어 두면 employee_account.role을 직접 바꾸는 권한
                         // 상승이 가능합니다. 사원 권한에서 제외합니다.
                         .requestMatchers(
-                                "/admin/employees/**",
-                                "/h2-console/**")
+                                "/admin/employees/**")
                         .hasRole("ADMIN")
                         .requestMatchers(
                                 "/admin/**",

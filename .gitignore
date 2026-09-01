@@ -39,3 +39,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Codex local artifacts ###
+.codex-tmp/
+.codex-work/
+.codex_work/
+deliverables/
+*.pptx.inspect.ndjson

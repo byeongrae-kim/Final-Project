@@ -934,12 +934,21 @@ public class DataInitializer {
             case "조류(닭/오리)" -> "BIRD";
             default -> "SUP";
         };
-        String imageVariant = categoryIndex % 2 == 0 ? "-v2" : "";
         String imageUrl = switch (category) {
-            case "소" -> "/images/products/cattle-feed%s.png".formatted(imageVariant);
-            case "돼지" -> "/images/products/pig-feed%s.png".formatted(imageVariant);
-            case "조류(닭/오리)" -> "/images/products/poultry-feed%s.png".formatted(imageVariant);
-            default -> "/images/products/supplement%s.png".formatted(imageVariant);
+            case "소" -> "25".equals(seed.weightKg())
+                    ? "/images/products/cattle-feed-25.png"
+                    : "/images/products/cattle-feed.png";
+            case "돼지" -> "25".equals(seed.weightKg())
+                    ? "/images/products/pig-feed-25.png"
+                    : "/images/products/pig-feed.png";
+            case "조류(닭/오리)" -> "10".equals(seed.weightKg())
+                    ? "/images/products/poultry-feed-10.png"
+                    : "/images/products/poultry-feed.png";
+            default -> switch (seed.weightKg()) {
+                case "2" -> "/images/products/supplement-2.png";
+                case "3" -> "/images/products/supplement-3.png";
+                default -> "/images/products/supplement.png";
+            };
         };
 
         return new StorefrontProfile(

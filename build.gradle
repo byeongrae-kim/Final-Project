@@ -1,23 +1,37 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.5.16'
-	id 'io.spring.dependency-management' version '1.1.7'
+   id 'java'
+   id 'org.springframework.boot' version '3.5.16'
+   id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.ex'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.1'   // 간단하게 버전 번호만
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+   toolchain {
+      languageVersion = JavaLanguageVersion.of(21)
+   }
 }
 
 repositories {
-	mavenCentral()
+   mavenCentral()
+}
+
+configurations {
+   migrationRuntime {
+      canBeConsumed = false
+      canBeResolved = true
+      extendsFrom runtimeOnly
+   }
 }
 
 dependencies {
+   // 운영 애플리케이션은 MySQL을 사용하지만, 기존 H2 데이터 이전 도구에서 필요합니다.
+   runtimeOnly 'com.h2database:h2'
+
+   // MySQL 드라이버 추가
+   runtimeOnly 'com.mysql:mysql-connector-j'
+
     implementation 'org.springframework.boot:spring-boot-starter-web'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
@@ -39,9 +53,6 @@ dependencies {
     // JPA (Entity, Repository 등)
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-    // H2 DB
-    runtimeOnly 'com.h2database:h2'
-
     // 유효성 검증 (@NotEmpty @Size 등 폼 데이터 검증)
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
@@ -57,11 +68,38 @@ dependencies {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	// STS와 Gradle 어느 쪽에서 실행해도 Spring이 메서드 파라미터 이름을
-	// 동일하게 인식하도록 컴파일 결과에 이름 정보를 보존합니다.
-	options.compilerArgs += '-parameters'
+   // STS와 Gradle 어느 쪽에서 실행해도 Spring이 메서드 파라미터 이름을
+   // 동일하게 인식하도록 컴파일 결과에 이름 정보를 보존합니다.
+   options.compilerArgs += '-parameters'
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+   useJUnitPlatform()
+}
+
+tasks.register('migrateH2ToMySql', JavaExec) {
+   group = 'database'
+   description = '기존 H2 데이터를 MySQL로 검증 후 이전합니다.'
+   classpath = sourceSets.main.runtimeClasspath
+   mainClass = 'com.ex.migration.H2ToMySqlMigrator'
+}
+
+tasks.register('migrationJar', Jar) {
+   group = 'database'
+   description = 'EC2에서 단독 실행할 H2→MySQL 마이그레이션 JAR를 생성합니다.'
+   dependsOn tasks.named('classes')
+   archiveClassifier = 'h2-to-mysql'
+   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+   manifest {
+      attributes 'Main-Class': 'com.ex.migration.H2ToMySqlMigrator'
+   }
+   from(sourceSets.main.output) {
+      include 'com/ex/migration/**'
+   }
+   from {
+      configurations.migrationRuntime.collect {
+         it.isDirectory() ? it : zipTree(it)
+      }
+   }
+   exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
 }

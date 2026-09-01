@@ -527,11 +527,26 @@ public class ManagementController {
             return product.getImageUrl();
         }
         return switch (product.getAnimalType()) {
-            case "소" -> "/images/products/cattle-feed-v2.png";
-            case "돼지" -> "/images/products/pig-feed-v2.png";
-            case "조류(닭/오리)" -> "/images/products/poultry-feed-v2.png";
-            case "영양제" -> "/images/products/supplement-v2.png";
-            default -> "/images/products/cattle-feed-v2.png";
+            case "소" -> product.getWeightKg().compareTo(
+                    BigDecimal.valueOf(25)) == 0
+                    ? "/images/products/cattle-feed-25.png"
+                    : "/images/products/cattle-feed.png";
+            case "돼지" -> product.getWeightKg().compareTo(
+                    BigDecimal.valueOf(25)) == 0
+                    ? "/images/products/pig-feed-25.png"
+                    : "/images/products/pig-feed.png";
+            case "조류(닭/오리)" -> product.getWeightKg().compareTo(
+                    BigDecimal.valueOf(10)) == 0
+                    ? "/images/products/poultry-feed-10.png"
+                    : "/images/products/poultry-feed.png";
+            case "영양제" -> product.getWeightKg().compareTo(
+                    BigDecimal.valueOf(2)) == 0
+                    ? "/images/products/supplement-2.png"
+                    : product.getWeightKg().compareTo(
+                            BigDecimal.valueOf(3)) == 0
+                    ? "/images/products/supplement-3.png"
+                    : "/images/products/supplement.png";
+            default -> "/images/products/cattle-feed.png";
         };
     }
 
